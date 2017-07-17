@@ -32,6 +32,30 @@ install_github('sbegueria/disdRo', build_vignettes=TRUE)
 ```
 
 
+## Using the package
+
+Once installed, you should load the package:
+
+```r
+library(disdRo)
+```
+
+Consult the help page of the package:
+
+```r
+help(package='disdRo')
+```
+
+Check the package vignettes for a more comprehensive tutorial:
+
+```r
+vignette('disdRo')
+```
+
+You can also find the vignettes on github, on the 'disdRo/inst/vignettes'
+directory.
+
+
 ## References
 
 You can cite this references if you use the SPEI library on your work:
