@@ -45,15 +45,17 @@ Consult the help page of the package:
 ```r
 help(package='disdRo')
 ```
-
-Check the package vignettes for a more comprehensive tutorial:
+You can check the help pages for the individual functions, or the more more
+comprehensive user guide (vignette).
+The vignettes can also be accessed directly in your browser via:
 
 ```r
-vignette('disdRo')
+browseVignettes('disdRo')
 ```
 
-You can also find the vignettes on github, on the 'disdRo/inst/vignettes'
-directory.
+Finally, you can also find the html vignettes on github, on the
+'disdRo/vignettes' directory.
+
 
 
 ## References
