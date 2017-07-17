@@ -4,7 +4,7 @@ author: Santiago Beguería
 date: "24 May 2016"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteEngine{knitr::knitr}
+  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteIndexEntry{disdRo: a package for reading and handling raw disdrometer data}
   %\usepackage[UTF-8]{inputenc}
 ---
