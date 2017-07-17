@@ -28,7 +28,7 @@ Install the latest stable development version from GitHub:
 
 ```r
 library(devtools)
-install_github('sbegueria', 'disdRo', build_vignettes=TRUE)
+install_github('sbegueria/disdRo', build_vignettes=TRUE)
 ```
 
 
