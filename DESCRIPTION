@@ -10,7 +10,7 @@ Description: A set of functions for reading and handling meteor drop size and ve
 URL: https://github.com/sbegueria/disdRo
 BugReports: https://github.com/sbegueria/disdRo/issues
 Depends: ggplot2, reshape2, abind, akima
-Suggests: knitr, zoo
+Suggests: knitr, markdown, zoo
 VignetteBuilder: knitr
 License: GPL-3
 Encoding: UTF-8
