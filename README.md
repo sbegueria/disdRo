@@ -61,9 +61,11 @@ Finally, you can also find the html vignettes on github, on the
 
 ## Authors
 
-Santiago Beguería (author, creator)
-Borja Latorre (author)
-Marta Angulo-Martínez (contributor)
+Santiago Beguería (author, creator).
+
+Borja Latorre (author).
+
+Marta Angulo-Martínez (contributor).
 
 
 
