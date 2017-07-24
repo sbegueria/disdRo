@@ -1,4 +1,4 @@
-# disdRo
+# disdRo [![DOI](https://zenodo.org/badge/97455750.svg)](https://zenodo.org/badge/latestdoi/97455750)
 
 An R package for reading and handling meteorological particle size and
 velocity distribution (PSVD), or disdrometric matrix data, from raw data
