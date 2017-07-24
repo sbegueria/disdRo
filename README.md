@@ -30,6 +30,7 @@ Install the latest stable development version from GitHub:
 library(devtools)
 install_github('sbegueria/disdRo', build_vignettes=TRUE)
 ```
+You can of course skip the vignettes to save compilation time.
 
 
 ## Using the package
@@ -60,9 +61,9 @@ Finally, you can also find the html vignettes on github, on the
 
 ## References
 
-You can cite this references if you use the SPEI library on your work:
+You can cite this package on your work as:
 
-
+Beguería S., Latorre B., Angulo-Martínez M. (2017) disdRo: an R for working with disdrometric data, doi:10.5281/zenodo.834266.
 
 
 
