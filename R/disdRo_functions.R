@@ -1,5 +1,5 @@
 # compile with:
-#roxygen2::roxygenise()
+# roxygen2::roxygenise()
 # or: Ctrl + Shift + D, if you’re using RStudio.
 
 # Currently there is no way to build vignettes using devtools if you just use
@@ -10,8 +10,8 @@
 
 #' Read raw disdrometer data
 #'
-#' Retrieves (usually minutal) drop size and velocity distributio DSVD data,
-#' that is the matrix of drop counts arranged by size and velocity classes,
+#' Retrieves (usually minutal) particle size and velocity distributio PSVD data,
+#' that is the matrix of particle counts arranged by size and velocity classes,
 #' from a list of raw disdrometer data files.
 #'
 #' @param files        A list of files to be processed.
@@ -19,9 +19,9 @@
 #'                     currently one of 'Thies' or 'Parsivel' Defaults to
 #'                     'Thies'.
 #'
-#' @return An array containing, for each minute, a drop size velocity
-#' distribution (DSVD) matrix, i.e. a matrix of velocity (rows) vs.
-#' size (columns) drop counts.
+#' @return An array containing, for each minute, a particle size velocity
+#' distribution (PSVD) matrix, i.e. a matrix of velocity (rows) vs.
+#' size (columns) particle counts.
 #'
 #' @section References
 #'
@@ -39,7 +39,7 @@ dsd_read <- function (files, type='Thies') {
   if (type!='Thies' & type!='Parsivel')
     stop('type must be one of c(Thies, Parsivel)')
   
-  # drop size and velocity bins
+  # particle size and velocity bins
   dia <- switch(type,
                 Thies=c(0.125, 0.25, 0.375, 0.5, 0.750, 1, 1.250, 1.5, 1.75,
                         2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5),
@@ -53,7 +53,7 @@ dsd_read <- function (files, type='Thies') {
                            1.2, 1.4, 1.6, 1.8, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0,
                            4.8, 5.6, 6.4, 7.2, 8.0, 9.6, 11.2, 12.8, 14.4, 16.0,
                            19.2, 22.4))
-  # drop size and velocity means
+  # particle size and velocity means
   dia_m <- switch(type,
                   Thies=(dia[1:22]+dia[2:23])/2,
                   Parsivel=(dia[1:32]+dia[2:33])/2)
@@ -95,14 +95,14 @@ dsd_read <- function (files, type='Thies') {
 
 #' Plot disdrometer data
 #'
-#' Produce a DSVD plot: drop count velocity vs. size.
+#' Produce a PSVD plot: particle count velocity vs. size.
 #'
-#' @param x            A drop size velocity distribution (DSVD) matrix.
+#' @param x            A particle size velocity distribution (PSVD) matrix.
 #' @param type         Character vector designing the type of disdrometer,
 #'                     currently one of 'Thies' or 'Parsivel'. Defaults to
 #'                     'Thies'.
 #' @param model        Vector. Which theoretical models of V vs. DS curves to
-#'                     plot on top of the DSVD. Defaults to c('Atlas',
+#'                     plot on top of the PSVD. Defaults to c('Atlas',
 #'                     'Uplinger','VanDijk')
 #' @param contour      Logical: should 2d density estimate contour lines be
 #'                     added to the plot? Defaults to FALSE.
@@ -138,7 +138,7 @@ dsd_plot <- function(x, type='Thies',
   if (type!='Thies' & type!='Parsivel')
     stop('type must be one of c(Thies, Parsivel)')
 
-  # drop size and velocity bins
+  # particle size and velocity bins
   dia <- switch(type,
                 Thies=c(0.125, 0.25, 0.375, 0.5, 0.750, 1, 1.250, 1.5, 1.75,
                         2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5),
@@ -152,14 +152,14 @@ dsd_plot <- function(x, type='Thies',
                            1.2, 1.4, 1.6, 1.8, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0,
                            4.8, 5.6, 6.4, 7.2, 8.0, 9.6, 11.2, 12.8, 14.4, 16.0,
                            19.2, 22.4))
-  # drop size and velocity bin widths
+  # particle size and velocity bin widths
   dia_w <- switch(type,
                   Thies=-(dia[1:22]-dia[2:23]),
                   Parsivel=-(dia[1:32]-dia[2:33]))
   vel_w <- switch(type,
                   Thies=-(vel[1:20]-vel[2:21]),
                   Parsivel=-(vel[1:32]-vel[2:33]))
-  # drop size and velocity means
+  # particle size and velocity means
   dia_m <- switch(type,
                   Thies=(dia[1:22]-dia[2:23]),
                   Parsivel=(dia[1:32]-dia[2:33]))
@@ -263,7 +263,7 @@ dsd_plot <- function(x, type='Thies',
 
 
   
-#' Compute DSVD integrated variables
+#' Compute PSVD integrated variables
 #'
 #' \code{dsd_integrate} reads raw disdrometer data and computes a series of
 #' integrated variables.
@@ -281,8 +281,8 @@ dsd_plot <- function(x, type='Thies',
 #' @param outfile A character vector with the url of the output file. Defaults
 #'                to a random file name in the session's temporary directory.
 #' @param interp  A character vector indicating the interpolation method to
-#'                use for inputing drop sizes and velocities within the bins
-#'                of the DSVD matrix. One of `middle`, `uniform`, and `linear`,
+#'                use for inputing particle sizes and velocities within the bins
+#'                of the PSVD matrix. One of `middle`, `uniform`, and `linear`,
 #'                defaulting to `middle`.
 #'
 #' @return A data frame with the following items:
@@ -292,12 +292,12 @@ dsd_plot <- function(x, type='Thies',
 #'    \item{time}{Date and time of the record (POSIXct)}
 #'    \item{seconds}{Number of seconds since 1970-01-01 00:00:00 (Numerica)}
 #'    \item{synop}{Synop code (Factor)}
-#'    \item{r}{Precipitation intensity computed from the DSVD matrix, mm h−1 (Numeric)}
-#'    \item{p}{Precipitation amount computed from the DSVD matrix, mm (Numeric)}
-#'    \item{m}{Liquid water content computed from the DSVD matrix, g m-3 (Numeric)}
-#'    \item{z}{Radar reflectivity computed from the DSVD matrix, dB mm6 m−3 (Numeric)}
-#'    \item{e}{Kinetic energy computed from the DSVD matrix, J m−2 mm−1 (Numeric)}
-#'    \item{mor}{Visibility computed from the DSVD matrix, m (Numeric)}
+#'    \item{r}{Precipitation intensity computed from the PSVD matrix, mm h−1 (Numeric)}
+#'    \item{p}{Precipitation amount computed from the PSVD matrix, mm (Numeric)}
+#'    \item{m}{Liquid water content computed from the PSVD matrix, g m-3 (Numeric)}
+#'    \item{z}{Radar reflectivity computed from the PSVD matrix, dB mm6 m−3 (Numeric)}
+#'    \item{e}{Kinetic energy computed from the PSVD matrix, J m−2 mm−1 (Numeric)}
+#'    \item{mor}{Visibility computed from the PSVD matrix, m (Numeric)}
 #'    \item{r_meas}{Precipitation intensity as reported by the disdrometer, mm h−1 (Numeric)}
 #'    \item{z_meas}{Radar reflectivity as reported by the disdrometer, dB mm6 m−3 (Numeric)}
 #'    \item{e_meas}{Kinetic energy as reported by the disdrometer, J m−2 h−1 (Numeric)}
@@ -307,8 +307,8 @@ dsd_plot <- function(x, type='Thies',
 #'    \item{rh}{Relative humidity, 0-100 (Numeric)}
 #'    \item{w}{Wind speed, m s-1 (Numeric)}
 #'    \item{wd}{Wind direction, degrees (Numeric)}
-#'    \item{np}{Number of drops detected computed from the DSVD matrix (Numeric)}
-#'    \item{np_meas}{Number of drops detected as reported by the disdrometer (Numeric)}
+#'    \item{np}{Number of particles detected computed from the PSVD matrix (Numeric)}
+#'    \item{np_meas}{Number of particles detected as reported by the disdrometer (Numeric)}
 #'    \item{lcurrent}{Laser control output, 1/100 mA (Numeric)}
 #'    \item{ocontrol}{Optical control output, mV (Numeric)}
 #'    \item{power}{Sensor power supply, V (Numeric)}
@@ -333,7 +333,7 @@ dsd_plot <- function(x, type='Thies',
 #'
 #' @section Bin interpolation:
 #' Since the particle size and velocity distribution is not linear within the
-#' bins of the DSVD matrix, different imputation methods exist. 'middle' will
+#' bins of the PSVD matrix, different imputation methods exist. 'middle' will
 #' assing the middle bin size and velocity to all the particles in the bin; 
 #' 'uniform' assumes an uniform distribution of sizes and velocities within the
 #' bin limits; and 'linear' assumes a linear distribution between the bin
@@ -343,8 +343,8 @@ dsd_plot <- function(x, type='Thies',
 #' \describe{
 #'    \item{0}{No error}
 #'    \item{1}{There is no telegram for that minute}
-#'    \item{2}{Saturation: the limit of 9999 drops has been exceeded in at
-#'    least one bin of the DSVD matrix (only for Thies)}
+#'    \item{2}{Saturation: the limit of 9999 particles has been exceeded in at
+#'    least one bin of the PSVD matrix (only for Thies)}
 #'    \item{3}{Non conform characters found in SYNOP field}
 #'    \item{4}{Non conform characters found in rain intensity field}
 #'    \item{5}{9999.999 value found in rain intensity}

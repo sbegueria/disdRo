@@ -8,14 +8,14 @@ dsd_plot(x, type = "Thies", model = c("Atlas", "Uplinger", "VanDijk"),
   contour = FALSE, theme = "color")
 }
 \arguments{
-\item{x}{A drop size velocity distribution (DSVD) matrix.}
+\item{x}{A particle size velocity distribution (PSVD) matrix.}
 
 \item{type}{Character vector designing the type of disdrometer,
 currently one of 'Thies' or 'Parsivel'. Defaults to
 'Thies'.}
 
 \item{model}{Vector. Which theoretical models of V vs. DS curves to
-plot on top of the DSVD. Defaults to c('Atlas',
+plot on top of the PSVD. Defaults to c('Atlas',
 'Uplinger','VanDijk')}
 
 \item{contour}{Logical: should 2d density estimate contour lines be
@@ -29,7 +29,7 @@ white).}
 A DSD plot.
 }
 \description{
-Produce a DSVD plot: drop count velocity vs. size.
+Produce a PSVD plot: particle count velocity vs. size.
 }
 \section{References}{
 NA

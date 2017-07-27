@@ -14,13 +14,13 @@ currently one of 'Thies' or 'Parsivel' Defaults to
 'Thies'.}
 }
 \value{
-An array containing, for each minute, a drop size velocity
-distribution (DSVD) matrix, i.e. a matrix of velocity (rows) vs.
-size (columns) drop counts.
+An array containing, for each minute, a particle size velocity
+distribution (PSVD) matrix, i.e. a matrix of velocity (rows) vs.
+size (columns) particle counts.
 }
 \description{
-Retrieves (usually minutal) drop size and velocity distributio DSVD data,
-that is the matrix of drop counts arranged by size and velocity classes,
+Retrieves (usually minutal) particle size and velocity distributio PSVD data,
+that is the matrix of particle counts arranged by size and velocity classes,
 from a list of raw disdrometer data files.
 }
 \section{References}{
