@@ -311,7 +311,7 @@ particles belonging to that class (see figure).
 This is the default option for the argument on function `dsd_integrate()`,
 equivalent to setting `interp='middle'`.
 
-```{r echo=FALSE, fig.width=7}
+```{r echo=FALSE, out.width="400px"}
 knitr::include_graphics('img/percentile_distribution.001.jpg')
 ```
 
@@ -325,7 +325,7 @@ The first option, corresponding to setting `interp='uniform'`, is a random
 distribution of the detected particles over the range of values in the bin,
 following a uniform probability distribution (see figure below).
 
-```{r echo=FALSE, fig.width=7}
+```{r echo=FALSE, out.width="400px"}
 knitr::include_graphics('img/percentile_distribution.002.jpg')
 ```
 
@@ -335,7 +335,7 @@ probability distribution constructed by fitting a line between two points
 determined as the average of the number of particles in the bin and the
 corresponding values on the neighbouring bins.
 
-```{r echo=FALSE, fig.width=7}
+```{r echo=FALSE, out.width="400px"}
 knitr::include_graphics('img/percentile_distribution.003.jpg')
 ```
 
