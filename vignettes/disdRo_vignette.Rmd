@@ -128,6 +128,10 @@ Data can also be read from a Parsivel or Parsivel2 disdrometer.
 In this case, the parameter `type` of `dsd_read()` and `dsd_plot()` functions
 can not be overriden, since Parsivel type is not the default option.
 
+Note: So far, it is assumed that the data consists on the complete telegram is
+recorded, which may not correspond to the factory settings.
+Custom definition of the telegram has not been implemented yet.
+
 ```{r parsivelExample, message=FALSE, warning=FALSE}
 f <- system.file('extdata', 'rawDataParsivel', package='disdRo')
 files <- list.files(f, '.txt.gz', full.names=TRUE, recursive=TRUE)
@@ -150,6 +154,7 @@ dsd_plot(day, type='Parsivel')
 * All the files need to conform to the format expected from the disdrometer;
 there are frequent errors, especially on Parsivel files, that cause the function
 to fail.
+* Possibility to define custom telegrams.
 
 
 

@@ -23,6 +23,13 @@
 #' distribution (PSVD) matrix, i.e. a matrix of velocity (rows) vs.
 #' size (columns) particle counts.
 #'
+#' @section Note
+#' So far, it is assumed that the data consists on the complete telegram is
+#' recorded. The raw PSVD matrix is assumed to start on position 23 (Thies)
+#' and 33 (Parsivel) of the telegram. This may not correspond to the factory
+#' settings of these devices. Custom definition of the telegram needs to be
+#' implemented.
+#' 
 #' @section References
 #'
 #' @examples
@@ -64,7 +71,7 @@ dsd_read <- function (files, type='Thies') {
   # read the files
   dat <- NULL
   bas <- switch(type, Thies=80, Parsivel=95)
-  imx <- switch(type, Thies=22, Parsivel=32)
+  imx <- switch(type, Thies=22, Parsivel=32) # raw DSD matrix starts at position 23 / 33
   jmx <- switch(type, Thies=20, Parsivel=32)
   for (f in files) {
     dsd <- read.table(f, sep=';',header=FALSE)[,bas:{bas+jmx*imx-1}]
@@ -338,7 +345,12 @@ dsd_plot <- function(x, type='Thies',
 #' 'uniform' assumes an uniform distribution of sizes and velocities within the
 #' bin limits; and 'linear' assumes a linear distribution between the bin
 #' limits.
-
+#' 
+#' @section Note
+#' It is assumed that the data consists on the complete telegram is recorded,
+#' which may not correspond to the default factory settings. Custom definition
+#' of the telegram needs to be implemented.
+#' 
 #' @section Error codes:
 #' \describe{
 #'    \item{0}{No error}
