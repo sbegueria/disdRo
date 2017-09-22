@@ -695,7 +695,7 @@ if($disdro == 0)
 						$v5 = sprintf("%.3f", $v5);
 						$v6 = sprintf("%.3f", $v6);
 
-						$data{$time} = "$synop,$r,$p,$m,$z,$e,$v,$d[12],$d[17],0,$d[16],$d[18],$d[519],$d[520],$d[521],$d[522],$d[49],$np_meas,$d[38],$d[40],$d[41],$d[36],$d1,$d2,$d3,$d4,$d5,$d6,$v1,$v2,$v3,$v4,$v5,$v6,$shift,$line,$satura,$#d"; 
+            $data{$time} = "$synop,$r,$p,$m,$z,$e,$v,$d[12],$d[17],0,$d[16],$d[18],$d[519],$d[520],$d[521],$d[522],$d[49],$np_meas,$d[38],$d[40],$d[41],$d[20],$d[36],$d1,$d2,$d3,$d4,$d5,$d6,$v1,$v2,$v3,$v4,$v5,$v6,$shift,$line,$satura,$#d";
 
 					}
 					#else{
@@ -712,7 +712,7 @@ if($disdro == 0)
 	open F, '>'.$outfile;
 
 	print F "'type','serial','time','seconds','synop','r','p','m','z','e','mor','r_meas',";
-	print F "'z_meas','e_meas','mor_meas','qual','tmp','rh','w','wd','np','np_meas','lcurrent','ocontrol','power',";
+	print F "'z_meas','e_meas','mor_meas','qual','tmp','rh','w','wd','np','np_meas','lcurrent','ocontrol','power','status',";
 	print F "'tmp_int','d10','d25','d50','d75','d90','dmean','v10','v25','v50','v75','v90','vmean','t_shift','now','err','ncol'\n";
 
 	# Recorremos fechas
@@ -722,15 +722,15 @@ if($disdro == 0)
 			if($data{$x} eq ''){
 				$err = 1;
 				$num = 0;
-				#print F "Thi,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
-				print F "Thi,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,$err,$num\n";
+				#print F "Thi,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
+				print F "Thi,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,$err,$num\n";
 			}
 			elsif($data{$x} =~ /^err(\d+)\,([^\,]+)/)
 			{
 				$err = $1;
 				$num = $2+1;
-				#print F "Thi,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
-				print F "Thi,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,$err,$num\n";
+				#print F "Thi,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
+				print F "Thi,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,$err,$num\n";
 			}
 			else{
 				# Si todo ha ido bien ponemos un valor de 0 en el error status
@@ -1292,7 +1292,7 @@ if($disdro == 1)
 						$v5 = sprintf("%.3f", $v5);
 						$v6 = sprintf("%.3f", $v6);
 
-						$data{$time} = "$synop,$cr,$cp,$cm,$cz,$ce,$cv,$r,$z,$e,$m,$na,$na,$na,$na,$na,$d[10],$np_meas,$na,$d[9],$d[16],$d[11],$d1,$d2,$d3,$d4,$d5,$d6,$v1,$v2,$v3,$v4,$v5,$v6,$shift,$line,0,".int($#d+1);
+						$data{$time} = "$synop,$cr,$cp,$cm,$cz,$ce,$cv,$r,$z,$e,$m,$na,$na,$na,$na,$na,$d[10],$np_meas,$na,$d[9],$d[16],$d[17],$d[11],$d1,$d2,$d3,$d4,$d5,$d6,$v1,$v2,$v3,$v4,$v5,$v6,$shift,$line,0,".int($#d+1);
 					}
 
 				}else{
@@ -1307,7 +1307,7 @@ if($disdro == 1)
 	open F, '>'.$outfile;
 
 	print F "'type','serial','time','seconds','synop','r','p','m','z','e','mor','r_meas',";
-	print F "'z_meas','e_meas','mor_meas','qual','tmp','rh','w','wd','np','np_meas','lcurrent','ocontrol','power',";
+	print F "'z_meas','e_meas','mor_meas','qual','tmp','rh','w','wd','np','np_meas','lcurrent','ocontrol','power','status',";
 	print F "'tmp_int','d10','d25','d50','d75','d90','dmean','v10','v25','v50','v75','v90','vmean','t_shift','now','err','ncol'\n";
 
 	# Recorremos fechas
@@ -1315,15 +1315,15 @@ if($disdro == 1)
 			$x = get_date($i);
 			# Comprobamos si hay dato para esta fecha
 			if($data{$x} eq ''){
-				#print F "Par,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0\n";
-				print F "Par,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,1,0\n";
+				#print F "Par,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0\n";
+				print F "Par,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,1,0\n";
 			}
 			elsif($data{$x} =~ /^err(\d+)\,([^\,]+)/)
 			{
 				$err = $1;
 				$num = $2+1;
-				#print F "Par,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
-				print F "Par,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,$err,$num\n";
+				#print F "Par,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
+				print F "Par,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,$err,$num\n";
 			}
 			else{
 				# Si todo ha ido bien ponemos un valor de 0 en el error status

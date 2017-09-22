@@ -228,37 +228,49 @@ Num | Nombre    | Descripción                                  | Parsivel | Thi
 20  | wd        | wind direction, º                            | No       | Opt
 21  | np        | number of particles detected (-)             | Si       | Si
 22  | power     | sensor power supply (V)                      | Si       | Si
-23  | tmp_int   | internal (sensor) temperature (ºC)           | Si       | Si
-24  | d25       | drop diameter, 25 percentile (mm)            | Si       | Si
-25  | d50       | drop diameter, 50 percentile (mm)            | Si       | Si
-26  | d75       | drop diameter, 75 percentile (mm)            | Si       | Si
-27  | dmean     | average drop diameter (mm)                   | Si       | Si
-28  | v25       | drop velocity, 25 percentile (m/s)           | Si       | Si
-29  | v50       | drop velocity, 50 percentile (m/s)           | Si       | Si
-30  | v75       | drop velocity, 75 percentile (m/s)           | Si       | Si
-31  | vmean     | average drop velocity (m/s)                  | Si       | Si
-32  | t_shift   | telegram time shift (s)                      | Si       | Si
-33  | nrow      | telegram line number                         | Si       | Si
-34  | err       | error status code  (0, no error; 1, no data) | Si       | Si
-35  | ncol      | number of telegram fields                    | Si       | Si
+23  | status    | sensor status code (see table)               | Si       | Si
+24  | tmp_int   | internal (sensor) temperature (ºC)           | Si       | Si
+25  | d25       | drop diameter, 25 percentile (mm)            | Si       | Si
+26  | d50       | drop diameter, 50 percentile (mm)            | Si       | Si
+27  | d75       | drop diameter, 75 percentile (mm)            | Si       | Si
+28  | dmean     | average drop diameter (mm)                   | Si       | Si
+29  | v25       | drop velocity, 25 percentile (m/s)           | Si       | Si
+30  | v50       | drop velocity, 50 percentile (m/s)           | Si       | Si
+31  | v75       | drop velocity, 75 percentile (m/s)           | Si       | Si
+32  | vmean     | average drop velocity (m/s)                  | Si       | Si
+33  | t_shift   | telegram time shift (s)                      | Si       | Si
+34  | nrow      | telegram line number                         | Si       | Si
+35  | err       | error status code (see table)                | Si       | Si
+36  | ncol      | number of telegram fields                    | Si       | Si
 
 An NA value is obtained if the variable does not exist in the telegram.
 
+List of the sensor status codes:
+
+Code   | Parsivel
+---    | ------
+0      | Sensor OK
+1      | Sensor requires cleaning, but data are still OK
+2      | Sensor requires cleaning, data might be wrong
+3      | Laser damaged
+
+Code   | Thies
+---    | ------
+0      | Sensor OK
+1      | Sensor damaged
+
 List of the error codes:
 
-Código | Descripción
+Code   | Description
 ---    | ------
-0      | Sin error
-1      | No hay telegrama para ese minuto
-2      | Saturación en la matriz de los Thies
-3      | Caracteres extraños en código SYNOP
-4      | Caracteres extraños en rain intensity
-5      | 9999.999 en rain intensity
-6      | El telegrama sólo contiene 'OK' o 'Version' (¿reinicio del Parsivel?)
-7      | Caracteres extraños en el telegrama
-21-23  | Parsivel error codes 1 to 3
-24-36  | Thies error codes 24 to 36
-37     | Thies, multiple error codes
+0      | No error
+1      | There are no data for that minute (NA)
+2      | Saturation (more than 999 drops) in the DSVD matrix (Thies)
+3      | Strange characters in the SYNOP code field
+4      | Strange characters in rain intensity field
+5      | 9999.999 in rain intensity field
+6      | The telegram only contains 'OK' o 'Version' (possible restart of Parsivel?)
+7      | There are strange characters somewhere in the telegram
 
 It is easy to plot the different variables:
 
