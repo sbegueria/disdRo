@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo=TRUE)
 knitr::opts_chunk$set(comment=NA, fig.height=6, fig.width=7, fig.align='center')
 
 # Remember that RStudio’s "Build & reload" does not build vignettes to
-# save time. Use `devtools::build()` instead.
+# save time. Use `devtools::build(vignettes=TRUE)` instead.
 # Similarly, `devtools::install_github()` will also not build vignettes by
 # default, so it need to be forced with
 # `devtools::install_github(build_vignettes = TRUE)`.
@@ -69,7 +69,8 @@ PSVD <- dsd_read(files, type='Thies')
 dim(PSVD)
 ```
 
-Global aggregates can be obtained for the whole period (one day, in this case):
+Global aggregates can be obtained for the whole period (one day, in this case),
+and can be represented as a bar plot:
 
 ```{r globalCounts, message=FALSE, warning=FALSE}
 day <- apply(PSVD, c(2,3), sum)
@@ -77,6 +78,14 @@ head(day)
 barplot(colSums(day), main='Daily drop counts per size class')
 barplot(rowSums(day), main='Daily drop counts per velocity class')
 ```
+
+Or the more conventional DSD logarithmic scatter:
+
+```{r logDSDscatter, message=FALSE, warning=FALSE}
+plot(log10(colSums(day))~colnames(day), ylab='log10(N)', xlab='size (mm)')
+grid()
+```
+
 
 ```{r timeCounts, message=FALSE, warning=FALSE}
 time <- apply(PSVD, 1, sum)
@@ -141,6 +150,9 @@ day <- apply(PSVD, c(2,3), sum)
 barplot(colSums(day), main='Daily drop counts per size class')
 barplot(rowSums(day), main='Daily drop counts per velocity class')
 
+plot(log10(colSums(day))~colnames(day), ylab='log10(N)', xlab='size (mm)', xlim=c(0,8))
+grid()
+
 time <- apply(PSVD, 1, sum)
 barplot(time, main='Number of drops per minute')
 
@@ -155,6 +167,10 @@ dsd_plot(day, type='Parsivel')
 there are frequent errors, especially on Parsivel files, that cause the function
 to fail.
 * Possibility to define custom telegrams.
+* Include corrections to the DSD (Parsivel snow measurements; A. Berne).
+* Include filters.
+* Include indices (convectivity, etc).
+* Implement fit to Gamma distribution (Braun y Upton).
 
 
 
