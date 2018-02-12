@@ -10,9 +10,9 @@
 
 #' Read raw disdrometer data
 #'
-#' Retrieves (usually minutal) particle size and velocity distributio PSVD data,
-#' that is the matrix of particle counts arranged by size and velocity classes,
-#' from a list of raw disdrometer data files.
+#' Retrieves (usually minutal) particle size and velocity distribution (PSVD)
+#' data, that is the matrix of particle counts arranged by size and velocity
+#' binds, from a list of raw disdrometer data files.
 #'
 #' @param files        A list of files to be processed.
 #' @param type         Character vector designing the type of disdrometer,
@@ -20,8 +20,8 @@
 #'                     'Thies'.
 #'
 #' @return An array containing, for each minute, a particle size velocity
-#' distribution (PSVD) matrix, i.e. a matrix of velocity (rows) vs.
-#' size (columns) particle counts.
+#' distribution (PSVD) matrix, i.e. a matrix of size (rows) vs.
+#' velocity (columns) particle counts.
 #'
 #' @section Note
 #' So far, it is assumed that the data consists on the complete telegram is
@@ -46,27 +46,13 @@ dsd_read <- function (files, type='Thies') {
   if (type!='Thies' & type!='Parsivel')
     stop('type must be one of c(Thies, Parsivel)')
   
-  # particle size and velocity bins
-  dia <- switch(type,
-                Thies=c(0.125, 0.25, 0.375, 0.5, 0.750, 1, 1.250, 1.5, 1.75,
-                        2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5),
-                Parsivel=c(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1,
-                           1.125, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 3, 3.5, 4,
-                           4.5, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 23, 26))
-  vel <- switch(type,
-                Thies=c(0, 0.2, 0.4, 0.6, 0.8, 1, 1.4, 1.8, 2.2, 2.6, 3, 3.4,
-                        4.2, 5, 5.8, 6.6, 7.4, 8.2, 9, 10, 11),
-                Parsivel=c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-                           1.2, 1.4, 1.6, 1.8, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0,
-                           4.8, 5.6, 6.4, 7.2, 8.0, 9.6, 11.2, 12.8, 14.4, 16.0,
-                           19.2, 22.4))
+  # particle size and velocity bin limits
+#  dia <- switch(type, Thies=disdRo:::dia_t, Parsivel=disdRo:::dia_p)
+#  vel <- switch(type, Thies=disdRo:::vel_t, Parsivel=disdRo:::vel_p)
+
   # particle size and velocity means
-  dia_m <- switch(type,
-                  Thies=(dia[1:22]+dia[2:23])/2,
-                  Parsivel=(dia[1:32]+dia[2:33])/2)
-  vel_m <- switch(type,
-                  Thies=(vel[1:20]+vel[2:21])/2,
-                  Parsivel=(vel[1:32]+vel[2:33])/2)
+  dia_m <- switch(type, Thies=disdRo:::dia_m_t, Parsivel=disdRo:::dia_m_p)
+  vel_m <- switch(type, Thies=disdRo:::vel_m_t, Parsivel=disdRo:::vel_m_p)
   
   # read the files
   dat <- NULL
@@ -81,7 +67,7 @@ dsd_read <- function (files, type='Thies') {
   	#dates <- seq(ini,ini+3600-60,by='min')
   	#dates <- seq(ini,ini+3600-(61-n)*n,by='min')
   	dates <- seq(ini,ini+(n-1)*60,by='min')
-  	dsd <- array(as.matrix(dsd),dim=c(n,jmx,imx))
+  	dsd <- array(as.matrix(dsd), dim=c(n,jmx,imx))
   	if (type=='Parsivel') {
       dsd <- aperm(dsd, c(1,3,2))
       w <- which(dsd==256)
@@ -93,12 +79,276 @@ dsd_read <- function (files, type='Thies') {
   }
 
   # return
+  dat <- aperm(dat, c(1,3,2))
   return(dat)
 }
 
 
 
 
+
+  
+  
+  
+#' Terminal drop velocity theoretical models
+#'
+#' This function implements the Beard model of terminal drop velocity. This
+#' is a physical approximation accounting for different factors such as viscous
+#' drag, drop oblateness, etcetera. The function implemented here is valid for
+#' drop sizes between 0.019 mm (19 µm) up to 7 mm. The function also contains
+#' the approximations of Atlas, Uplinger and Van Dijk. The Beard model is
+#' implemented by default assuming a standard atmosphere: P=101.325 kPa,
+#' T=288.15 K, and rho= 1.225 kg/m3, but other values can be provided.
+#'
+#' @param size          Numeric. A vector of drop sizes (in mm).
+#' @param model         Character. Name of the terminal velocity model to use.
+#'                      One 'Beard', 'Atlas', 'Uplinger' or 'VanDijk'. Defaults
+#'                      to 'Beard'.
+#' @param eta           Numeric. A vector of air dynamic viscosity values.
+#'                      Deafults to 1.818e-04 kg m-1 s-1. Optional, used only
+#'                      in the Beard model.
+#' @param P             Numeric. A vector of air pressure values. Defaults to
+#'                      101.325 kPa. Optional, used  only in the Beard model.
+#' @param T             Numeric. A vector of air temperature values. Defaults
+#'                      to 288.15 K. Optional, used  only in the Beard model.
+#' @param rho           Numeric. A vector of air densities. Defaults to
+#'                      1.225 kg m-3. Optional, used  only in the Beard and
+#'                      Atlas models.
+#' @param alt           Numeric. Elevation, which can be used if provided to
+#'                      estimate pressure, density and temperature of air in
+#'                      according to the International Standard Atmosphere.
+#'                      Defaults to 0 m above mean sea level. Optional, used 
+#'                      in the Beard and Atlas models to estimate parameters
+#'                      `eta`, `P`, `T` and `rho` if no values are provided.
+#'
+#' @return A vector of terminal fall velocities. It will cointain NA for any
+#' drop sizes lower than 0.019 mm or larger than 7 mm (Beard model), or lower
+#' than 0.1 and larger than 7 mm for the approximations.
+#'
+#' @section References
+#' 
+#' Atlas, D., Srivastava, R.C., Sekhon, R.S., 1973. Doppler radar
+#' characteristics of precipitation at vertical incidence. Rev. Geophys.
+#' Space Phys. 11, 1–35.
+#' 
+#' Beard, K.V., 1976. Terminal velocity and shape of cloud and precipitation
+#' drops aloft. J. Atmos. Sci. 33, 851–864.
+#' 
+#' Uplinger, C.W. (1981) A new formula for raindrop terminal velocity. 20th
+#' Conference of radar meteorology. American Meteorology Society, Boston (USA)
+#' 389-391.
+#' 
+#' Van Dijk, A.I.J.M., Bruijnzeel, L.A., Rosewell, C.J., 2002. Rainfall
+#' intensity-kinetic energy relationships: a critical literature appraisal.
+#' J. Hydrol. 261, 1–23.
+#' 
+#' @examples
+#' 
+#' size <- seq(0, 6, 0.2)
+#' psvd_model(size)
+#' psvd_model(size, alt=2000)
+#' psvd_model(size, model='Atlas')
+#' psvd_model(size, model='Uplinger')
+#' psvd_model(size, model='VanDijk')
+#' 
+#' @export
+#' 
+psvd_model <- function(size, model='Beard', eta=1.818e-05, P=101.325,
+                       T=288.15, rho=1.225, alt=0) {
+  if (length(eta)>1 & length(size) != length(eta))
+    stop('Different parameter vector lengths.')
+  if (length(P)>1 & length(size) != length(P))
+    stop('Different parameter vector lengths.')
+  if (length(T)>1 & length(size) != length(T))
+    stop('Different parameter vector lengths.')
+  if (!(model %in% c('Beard', 'Atlas', 'Uplinger','VanDijk')))
+    stop('Model must be one of \'Beard\', \'Atlas\', \'Uplinger\', \'VanDijk\'.')
+
+  # Calculate air parameters according to Standard Atmosphere
+  # Following: https://en.wikipedia.org/wiki/Density_of_air for P, T, rho;
+  # and the Sutherland's formula for eta (Crane Company. 1988. Flow of fluids
+  # through valves, fittings, and pipe. Technical Paper No. 410 (TP 410)).
+  if (alt != 0) {
+    if (P == 101.325) {
+      P <- 101.325 * (1 - (0.0065*alt)/288.15) ^(9.80665*0.0289644/8.31447/0.0065)
+    }
+    if (T == 288.15) {
+      T <- 288.15 - (0.0065*alt)
+    }
+    if (rho == 1.225) {
+      rho <- 1000 * (P*0.0289644) / (8.31447*T)
+    }
+    if (eta == 1.818e-05) {
+      a <- 0.555*524.07 + 120
+      b <- 0.555*1.8*T + 120
+      eta <- 0.00001827 * (a/b) * (T/291.15)^(3/2)
+    }
+  }
+  
+  # Uplinger
+  if (model=='Uplinger') {
+    VInf <- 4.874 * size * exp(-0.195*size)
+    w <- size <= 0.1 | size > 7
+    VInf[w] <- NA
+  }
+
+  # Atlas
+  if (model=='Atlas') {
+    VInf <- (965 - 1030 * exp(-6*(size/10))) / 100
+    # Correction for air density
+    VInf <- VInf * (rho / 1.225)^0.4
+    # equation of Atlas & Ulbrich (1977), used in Angulo (2016)
+    #VInf <- 17.67*(size/10)^0.67
+    w <- size <= 0.1 | size > 7
+    VInf[w] <- NA
+  }
+
+  # Van Dijk
+  if (model=='VanDijk') {
+    VInf <- - 0.254 + 5.03*size - 0.912*size^2 + 0.0561*size^3
+    w <- size <= 0.1 | size > 7
+    VInf[w] <- NA
+  }
+
+  if (model=='Beard') {
+    d0 <- size / 1000 # drop size, m
+    deltaRho <- 1000 - rho # density difference (water - air)
+    g <- 9.80665 # gravity acceleration, m s-2
+    # for size <= 1.07 mm
+    NDa <- 4 * rho * deltaRho * g * d0^3 / (3 * eta^2) # Davies number, adimens.
+    X <- log(NDa)
+    Y <- -0.318657e+01 + 0.992696*X - 0.153193e-02*X^2 - 0.987059e-03*X^3 -
+      0.578878e-03*X^4 + 0.855176e-04*X^5 - 0.327815e-05*X^6
+    l <- 6.62e-06 * (eta/1.818e-05) * (101.325/P) * (T/288.15)^(1/2) # mean free path, cm
+    Csc <- 1 + 2.51 * l / d0 # slip correction factor - neglible for size>0.03 mm
+    NRe <- Csc * exp(Y) # Reynolds number
+    Vinf1 <- eta * NRe / (rho * d0) # terminal drop velocity, m s-1
+    # for size > 1.07 mm
+    sigma <- 0.073 # surface tension of water, N m-1 = kg s-2
+    Bo <- 4 * deltaRho * g * d0^2 / (3 * sigma) # modified Bond number
+    Np <- (sigma^3 * rho^2 / (eta^4 * deltaRho * g)) ^ (1/6) # physical property number (?)
+    X <- log(Bo * Np)
+    Y <- -0.500015e01 + 0.523778e01*X - 0.204914e01*X^2 + 0.475294*X^3 -
+      0.542819e-01*X^4 + 0.238449e-02*X^5
+    NRe <- Np * exp(Y) # Reynolds number
+    Vinf2 <- eta * NRe / (rho * d0) # terminal drop velocity, m s-1
+    #
+    w <- size <= 1.07
+    VInf <- c(Vinf1[which(w)],Vinf2[which(!w)])
+    w <- size < 0.019
+    VInf[w] <- NA
+  }
+  return(VInf)
+}
+
+
+
+#' Create a filter to remove outlier PSVD bins
+#'
+#' Produces a matrix that is used as a mask in further calculations that
+#' involve using the PSVD matrix data. The purpose is to remove highly unlikely
+#' drop size and velocity combinations, which are typical in disdrometer
+#' records due to margin fallers, double drops, drop splashing, and other
+#' issues.
+#'
+#' @param type          Character vector designing the type of disdrometer,
+#'                      currently one of 'Thies' or 'Parsivel' Defaults to
+#'                      'Thies'.
+#' @param d             Numeric. A two-valued vector with the diameter limits
+#'                      (inferior, superior). Defaults to (-Inf, Inf), so no
+#'                      bins are removed.
+#' @param v             Numeric. A two-valued vector with the velocity limits
+#'                      (inferior, superior). Defaults to (-Inf, Inf), so no
+#'                      bins are removed.
+#' @param model         Character. Name of the terminal velocity model to use.
+#'                      See `psvd_model()`.
+#' @param tau           Numeric. A value between 0 and 1 that defines outlier
+#'                      bins. Defaults to 0.5 (i.e., velocities that are 50%
+#'                      off the theoretical model are removed). Defaults to
+#'                      Inf, in which case all the bins are accepted and no
+#'                      filtering is done according to a theoretical model.
+#' @param eta           Numeric. Air dynamic viscosity, optional.
+#'                      See `psvd_model()`.
+#' @param P             Numeric. Air pressure, optional. See `psvd_model()`.
+#' @param T             Numeric. Air temperature, optional. See `psvd_model()`.
+#' @param rho           Numeric. Air density, optional. See `psvd_model()`.
+#' @param alt           Numeric. Elevation, optional. See `psvd_model()`.
+#'
+#' @return A 22x20 (Thies) or 32x32 (Parsivel) logical matrix indicating
+#' which PSVD bins to consider (TRUE) and which to remove (FALSE). Diameters
+#' are stored as rows, and velocities as columns.
+#'
+#' @section References
+#' 
+#' 
+#' @examples
+#' 
+#' # shown as images for easy visualization:
+#' 
+#' # filter only by drop size
+#' image(psvd_filter(d=c(0.3,7), tau=Inf))
+#' 
+#' # filter only by theoretical velocity: low tolerance
+#' image(psvd_filter(tau=0.5))
+#' # higher tolerance
+#' image(psvd_filter(tau=0.7))
+#' # using other theoretical model
+#' image(psvd_filter(model='Atlas', tau=0.5))
+#' 
+#' # filter by two criteria
+#' image(psvd_filter(d=c(0.3,7), tau=0.5))
+#' 
+#' # filter for a Parsivel
+#' image(psvd_filter(type='Parsivel', d=c(0.3,7), tau=0.5))
+#' 
+#' # used as input to `psvd_plot()`
+#'  
+#' 
+#' @export
+#' 
+psvd_filter <- function(type='Thies', d=c(-Inf,Inf), v=c(-Inf,Inf),
+                        model='Beard', tau=Inf, eta=1.818e-05,
+                        P=101.325, T=288.15, rho=1.225, alt=0) {
+  
+  if (d[1]>d[2]) stop('Lower diameter limit is larger than higher.')
+  if (v[1]>v[2]) stop('Lower velocity limit is larger than higher.')
+  if (!is.infinite(tau) & (tau<0 | tau>1)) stop('tau must be between 0 and 1.')
+  
+  # particle size and velocity bin limits
+  #  dia <- switch(type, Thies=disdRo:::dia_t, Parsivel=disdRo:::dia_p)
+  #  vel <- switch(type, Thies=disdRo:::vel_t, Parsivel=disdRo:::vel_p)
+  
+  # particle size and velocity means
+  dia_m <- switch(type, Thies=disdRo:::dia_m_t, Parsivel=disdRo:::dia_m_p)
+  vel_m <- switch(type, Thies=disdRo:::vel_m_t, Parsivel=disdRo:::vel_m_p)
+  
+  
+  fil <- matrix(TRUE, nrow=length(dia_m), ncol=length(vel_m))
+  dimnames(fil) <- list(size=dia_m, velocity=vel_m)
+  
+  # Filter by diameter range
+  w <- which(!(dia_m >= d[1] & dia_m <= d[2]))
+  fil[w,] <- FALSE
+
+  # Filter by velocity range
+  w <- which(!(vel_m >= v[1] & vel_m <= v[2]))
+  fil[,w] <- FALSE
+  
+  # Filter according to a theoretical terminal velocity model
+  VInf <- psvd_model(dia_m, model)
+  for (i in 1:length(dia_m)) {
+    vratio <- vel_m/VInf[i]
+    w <- which(vratio < (1-tau) | vratio > (1+tau))
+    fil[i,w] <- FALSE
+  }
+  
+  return(fil)
+}
+
+
+
+  
+  
 
 #' Plot disdrometer data
 #'
@@ -109,13 +359,17 @@ dsd_read <- function (files, type='Thies') {
 #'                     currently one of 'Thies' or 'Parsivel'. Defaults to
 #'                     'Thies'.
 #' @param model        Vector. Which theoretical models of V vs. DS curves to
-#'                     plot on top of the PSVD. Defaults to c('Atlas',
-#'                     'Uplinger','VanDijk')
+#'                     plot on top of the PSVD. One or more of c('Beard',
+#'                     'Atlas', Uplinger','VanDijk'). Defaults to 'Beard'.
 #' @param contour      Logical: should 2d density estimate contour lines be
 #'                     added to the plot? Defaults to FALSE.
-#' @param theme       Character vector indicating a plotting theme to use.
-#'                    Current options are 'color' (default) or 'bw' (black and
-#'                    white).
+#' @param theme        Character vector indicating a plotting theme to use.
+#'                     Current options are 'color' (default) or 'bw' (black and
+#'                     white).
+#' @param outlier      A value between 0 and 1. Removes outlier bins, i.e.
+#'                     those that are between (1-value) and (1+value) far from
+#'                     the Bear theoretical fall velocity model. Defaults to
+#'                     Inf (no outliers are removed).
 #'
 #' @return A DSD plot.
 #'
@@ -131,84 +385,88 @@ dsd_read <- function (files, type='Thies') {
 #' # full plot
 #' dsd_plot(day)
 #' # choose one model
-#' dsd_plot(day, model='VanDijk')
+#' dsd_plot(day, model='Beard')
 #' # no model
 #' dsd_plot(day, model=NA)
 #' # no model, add contour lines
 #' dsd_plot(day, model=NA, contour=TRUE)
 #'
+#' filter <- psvd_filter(type='Thies', d=c(0.3,7), tau=0.5)
+#' 
 #' @export
 dsd_plot <- function(x, type='Thies',
-                     model=c('Atlas','Uplinger','VanDijk'),
-                     contour=FALSE, theme='color') {
+                     #model='Beard',
+                     contour=FALSE, theme='color', filter=NULL) {
 
   if (type!='Thies' & type!='Parsivel')
     stop('type must be one of c(Thies, Parsivel)')
 
-  # particle size and velocity bins
-  dia <- switch(type,
-                Thies=c(0.125, 0.25, 0.375, 0.5, 0.750, 1, 1.250, 1.5, 1.75,
-                        2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5),
-                Parsivel=c(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1,
-                           1.125, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 3, 3.5, 4,
-                           4.5, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 23, 26))
-  vel <- switch(type,
-                Thies=c(0, 0.2, 0.4, 0.6, 0.8, 1, 1.4, 1.8, 2.2, 2.6, 3, 3.4,
-                        4.2, 5, 5.8, 6.6, 7.4, 8.2, 9, 10, 11),
-                Parsivel=c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-                           1.2, 1.4, 1.6, 1.8, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0,
-                           4.8, 5.6, 6.4, 7.2, 8.0, 9.6, 11.2, 12.8, 14.4, 16.0,
-                           19.2, 22.4))
-  # particle size and velocity bin widths
-  dia_w <- switch(type,
-                  Thies=-(dia[1:22]-dia[2:23]),
-                  Parsivel=-(dia[1:32]-dia[2:33]))
-  vel_w <- switch(type,
-                  Thies=-(vel[1:20]-vel[2:21]),
-                  Parsivel=-(vel[1:32]-vel[2:33]))
-  # particle size and velocity means
-  dia_m <- switch(type,
-                  Thies=(dia[1:22]-dia[2:23]),
-                  Parsivel=(dia[1:32]-dia[2:33]))
-  vel_m <- switch(type,
-                  Thies=(vel[1:20]-vel[2:21]),
-                  Parsivel=(vel[1:32]-vel[2:33]))
+  # particle size and velocity bin limits
+  dia <- switch(type, Thies=disdRo:::dia_t, Parsivel=disdRo:::dia_p)
+  vel <- switch(type, Thies=disdRo:::vel_t, Parsivel=disdRo:::vel_p)
   
-  # transform to long format for ggplot
+  # particle size and velocity bin means
+  #dia_m <- switch(type, Thies=disdRo:::dia_m_t, Parsivel=disdRo:::dia_m_p)
+  #vel_m <- switch(type, Thies=disdRo:::vel_m_t, Parsivel=disdRo:::vel_m_p)
+
+  # particle size and velocity bin widths
+  dia_w <- switch(type, Thies=disdRo:::dia_w_t, Parsivel=disdRo:::dia_w_p)
+  vel_w <- switch(type, Thies=disdRo:::vel_w_t, Parsivel=disdRo:::vel_w_p)
+  
+  # transform data to long format for ggplot
   x_m <- reshape2::melt(x)
   xx <- x
-  dimnames(xx) <- list(vel_w, dia_w)
-  x_m <- cbind(x_m, reshape2::melt(xx))[,-3]
-  colnames(x_m) <- c('vel','dia','vel_w','dia_w','n')
+  dimnames(xx) <- list(dia_w, vel_w)
+  x_m <- cbind(x_m,
+               reshape2::melt(xx))[,-3]
+  colnames(x_m) <- c('dia','vel','dia_w','vel_w','n')
   x_m$n <- log10(x_m$n)
+  
+  # change opacity of outliers according to filter
+  if (!is.null(filter)) {
+    x_m$filter <- reshape2::melt(filter)[,3]
+  } else {
+    x_m$filter <- TRUE
+  }
+  x_m$alp <- x_m$filter
+  x_m$alp <- pmin(1, (x_m$alp+0.75))
+  
   x_m <- x_m[x_m$n>1,]
   #summary(x_m)
-
+    
   # heatmap - rectangular binding
   # original version, casts a warning in R CMD CHECK: g <- ggplot(x_m, aes(x=dia, y=vel, width=dia_w, height=vel_w, fill=n)) +
-  g <- ggplot(x_m, aes_(x=~dia, y=~vel, width=~dia_w, height=~vel_w, fill=~n)) +
-    geom_tile(alpha=1) +
+  g <- ggplot(x_m, aes_(x=~dia, y=~vel, width=~dia_w, height=~vel_w, fill=~n, alpha=~alp)) +
+    geom_tile() +
     xlim(c(0,8)) + ylim(c(0,15)) +
     xlab('Diameter (mm)') + ylab('Velocity (m/s)') +
-    theme_bw() +
+    theme_bw() + 
+    guides(alpha=FALSE) +
     theme(panel.grid=element_blank())
   if (theme=='color') {
-    g <- g + scale_fill_gradient2(name='NS', low='darkgreen',mid='yellow',high='darkred',
+    g <- g + scale_fill_gradient2(name='NS', low='darkgreen', mid='yellow', high='darkred',
                          limits=c(0,5), midpoint=2,
                          na.value='darkgreen',labels=c(0,10,100,1000,10000,100000))
     if (length(model)>0) {
+      if ('Beard' %in% model) {
+        g <- g + stat_function(aes(col='Beard'), fun=psvd_model,
+                               args=list(model='Beard'))
+      }
       if ('Atlas' %in% model) {
-        g <- g + stat_function(aes(col='Atlas'), fun=function(x) 17.67*(x/10)^0.67)
+        g <- g + stat_function(aes(col='Atlas'), fun=psvd_model,
+                               args=list(model='Atlas'))
       }
       if ('Uplinger' %in% model) {
-        g <- g + stat_function(aes(col='Uplinger'), fun=function(x) 4.874*x*exp(-0.195*x))
+        g <- g + stat_function(aes(col='Uplinger'), fun=psvd_model,
+                               args=list(model='Uplinger'))
       }
       if ('VanDijk' %in% model) {
-        g <- g + stat_function(aes(col='VanDijk'), fun=function(x) 0.0561*x^3-0.912*x^2+5.03*x-0.254)
+        g <- g + stat_function(aes(col='VanDijk'), fun=psvd_model,
+                               args=list(model='VanDijk'))
       }
       g <- g + guides(col=guide_legend(title='Model'))
       if (contour) {
-        g <- g + geom_density_2d(alpha=0.5)
+        g <- g + geom_density_2d(alpha=0.5, col='dark grey')
         #g <- g + stat_density_2d(aes(fill = ..level..), geom = "polygon")
       }
     }
@@ -218,18 +476,25 @@ dsd_plot <- function(x, type='Thies',
                                   limits=c(0,5), midpoint=2,
                                   na.value='white',labels=c(0,10,100,1000,10000,100000))
     if (length(model)>0) {
+      if ('Beard' %in% model) {
+        g <- g + stat_function(aes(linetype='Beard'), fun=psvd_model,
+                               args=list(model='Beard'))
+      }
       if ('Atlas' %in% model) {
-        g <- g + stat_function(aes(linetype='Atlas'), fun=function(x) 17.67*(x/10)^0.67)
+        g <- g + stat_function(aes(linetype='Atlas'), fun=psvd_model,
+                               args=list(model='Atlas'))
       }
       if ('Uplinger' %in% model) {
-        g <- g + stat_function(aes(linetype='Uplinger'), fun=function(x) 4.874*x*exp(-0.195*x))
+        g <- g + stat_function(aes(linetype='Uplinger'), fun=psvd_model,
+                               args=list(model='Uplinger'))
       }
       if ('VanDijk' %in% model) {
-        g <- g + stat_function(aes(linetype='VanDijk'), fun=function(x) 0.0561*x^3-0.912*x^2+5.03*x-0.254)
+        g <- g + stat_function(aes(linetype='VanDijk'), fun=psvd_model,
+                               args=list(model='VanDijk'))
       }
       g <- g + guides(col=guide_legend(title='Model'))
       if (contour) {
-        g <- g + geom_density_2d(color='black', alpha=0.5)
+        g <- g + geom_density_2d(alpha=0.5, col='dark grey')
         #g <- g + stat_density_2d(aes(fill = ..level..), geom = "polygon")
       }
     }
