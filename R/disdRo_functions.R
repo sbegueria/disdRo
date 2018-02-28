@@ -431,7 +431,6 @@ psd_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
 #    geom_step(aes(x=limit), col='dark grey') +
     geom_line(col='dark grey') +
     geom_point() +
-    xlim(c(0,8)) +
     scale_y_log10() +
     xlab('Diameter (mm)') + ylab('N(D) (m-3 mm-1)') +
     theme_bw() + 
@@ -467,11 +466,11 @@ psd_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
 #' files <- list.files(f, '.txt', full.names=TRUE, recursive=TRUE)
 #' dsd <- psvd_read(files, type='Thies')
 #' day <- apply(dsd, c(2,3), sum)
-#' psv_plot(day)
-#' psv_plot(day, filter=psvd_filter(type='Thies', d=c(0.3,7), tau=0.5))
+#' pvd_plot(day)
+#' pvd_plot(day, filter=psvd_filter(type='Thies', d=c(0.3,7), tau=0.5))
 #'
 #' @export
-psv_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
+pvd_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
   
   # particle velocity bin means
   vel_m <- switch(type, Thies=disdRo:::vel_m_t, Parsivel=disdRo:::vel_m_p)
@@ -499,7 +498,7 @@ psv_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
   }
   x <- x * filter
   
-  # compute precipitation amount per velocity class (mm)
+  # compute precipitation amounts per velocity class (mm)
   r <- rep(0, ncol(x))
   for (j in 1:ncol(x)) {
     if (sum(x[,j])==0) next()
@@ -522,7 +521,6 @@ psv_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
 #    geom_step(aes(x=limit), col='dark grey') +
     geom_line(col='dark grey') +
     geom_point() +
-    xlim(c(0,8)) +
     scale_y_log10() +
     xlab('Fall velocity (m s-1)') + ylab('N(D) (m-3 mm-1)') +
     theme_bw() + 
