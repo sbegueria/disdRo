@@ -352,8 +352,8 @@ psvd_filter <- function(type='Thies', d=c(-Inf,Inf), v=c(-Inf,Inf),
 
 #'Particle size distribution plot
 #'
-#' Produce a PSD plot: particle count (number of drops per m^3 of air and
-#' mm of rain) vs drop size.
+#' Produce a PSD plot: particle density (number of drops per m^3 of air and
+#' mm of rain) vs particle size.
 #'
 #' @param x            A particle size velocity distribution (PSVD) matrix.
 #' @param type         Character vector designing the type of disdrometer,
@@ -363,6 +363,8 @@ psvd_filter <- function(type='Thies', d=c(-Inf,Inf), v=c(-Inf,Inf),
 #'                     those that are between (1-value) and (1+value) far from
 #'                     the Bear theoretical fall velocity model. Defaults to
 #'                     Inf (no outliers are removed).
+#' @param a            Optional, the sensor area (in cm2). Defaults to the
+#'                     mean sensor area of Thies and Parsivel disdrometers.
 #' @return A PSD plot.
 #'
 #' @section References
@@ -377,7 +379,7 @@ psvd_filter <- function(type='Thies', d=c(-Inf,Inf), v=c(-Inf,Inf),
 #' psd_plot(day, filter=psvd_filter(type='Thies', d=c(0.3,7), tau=0.5))
 #'
 #' @export
-psd_plot <- function(x, type='Thies', filter=NULL) {
+psd_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
   
   # particle size bin means
   dia_m <- switch(type, Thies=disdRo:::dia_m_t, Parsivel=disdRo:::dia_m_p)
@@ -386,7 +388,9 @@ psd_plot <- function(x, type='Thies', filter=NULL) {
   dia <- switch(type, Thies=disdRo:::dia_t, Parsivel=disdRo:::dia_p)
   
   # sensor area (m^2)
-  a <- switch(type, Thies=0.00456, Parsivel=0.0054)
+  if (is.null(a)) {
+    a <- switch(type, Thies=0.00456, Parsivel=0.0054)
+  }
   
   # correction for effective area
   # we need before to store the width (W) and length (L) of the laser sheet of
@@ -415,25 +419,17 @@ psd_plot <- function(x, type='Thies', filter=NULL) {
   for (i in 1:nrow(x)) {
     if (sum(x[i,])==0) next()
 #    nd[i] <- sum(x[i,] / (vel_m[i]*a*60), na.rm=TRUE)
-    nd[i] <- sum(x[i,] / (vel_m[i]*a_eff[i]*60), na.rm=TRUE)
+    nd[i] <- sum(x[i,] / (vel_m*a_eff[i]*60), na.rm=TRUE)
   }
   nd <- nd / r
 
   # collapse PSVD matrix
   xx <- data.frame(size=dia_m, limit=dia[-length(dia)],
                    np=rowSums(x*filter)/r, nd=nd)
-  
-  # ggplot(xx, aes(x=size, y=np)) +
-  #   geom_step(aes(x=limit), col='dark grey') +
-  #   geom_point() +
-  #   xlim(c(0,8)) +
-  #   scale_y_log10() +
-  #   xlab('Diameter (mm)') + ylab('NP (mm-1)') +
-  #   theme_bw() + 
-  #   guides(alpha=FALSE)
 
   ggplot(xx, aes(x=size, y=nd)) +
-    geom_step(aes(x=limit), col='dark grey') +
+#    geom_step(aes(x=limit), col='dark grey') +
+    geom_line(col='dark grey') +
     geom_point() +
     xlim(c(0,8)) +
     scale_y_log10() +
@@ -441,6 +437,99 @@ psd_plot <- function(x, type='Thies', filter=NULL) {
     theme_bw() + 
     guides(alpha=FALSE)
 }
+
+
+
+
+
+#'Particle velocity distribution plot
+#'
+#' Produce a PSV plot: particle density (number of drops per m^3 of air and
+#' mm of rain) vs particle velocity.
+#'
+#' @param x            A particle size velocity distribution (PSVD) matrix.
+#' @param type         Character vector designing the type of disdrometer,
+#'                     currently one of 'Thies' or 'Parsivel'. Defaults to
+#'                     'Thies'.
+#' @param filter       A value between 0 and 1. Removes outlier bins, i.e.
+#'                     those that are between (1-value) and (1+value) far from
+#'                     the Beard theoretical fall velocity model. Defaults to
+#'                     Inf (no outliers are removed).
+#' @param a            Optional, the sensor area (in cm2). Defaults to the
+#'                     mean sensor area of Thies and Parsivel disdrometers.
+#' @return A PSD plot.
+#'
+#' @section References
+#'
+#' @examples
+#'
+#' f <- system.file('extdata', 'rawDataThies', package='disdRo')
+#' files <- list.files(f, '.txt', full.names=TRUE, recursive=TRUE)
+#' dsd <- psvd_read(files, type='Thies')
+#' day <- apply(dsd, c(2,3), sum)
+#' psv_plot(day)
+#' psv_plot(day, filter=psvd_filter(type='Thies', d=c(0.3,7), tau=0.5))
+#'
+#' @export
+psv_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
+  
+  # particle velocity bin means
+  vel_m <- switch(type, Thies=disdRo:::vel_m_t, Parsivel=disdRo:::vel_m_p)
+  # particle velocity bin limits
+  vel <- switch(type, Thies=disdRo:::vel_t, Parsivel=disdRo:::vel_p)
+  # particle size bin means
+  dia_m <- switch(type, Thies=disdRo:::dia_m_t, Parsivel=disdRo:::dia_m_p)
+  
+  # sensor area (m^2)
+  if (is.null(a)) {
+    a <- switch(type, Thies=0.00456, Parsivel=0.0054)
+  }
+  
+  # correction for effective area
+  # we need before to store the width (W) and length (L) of the laser sheet of
+  # both devices. 30 x 180 mm for Parsivel (although Battaglia refers W=27 mm).
+  # a <- 10e-06 * L * (W-dia_m). Thies is 20 x 228 mm
+  a_eff <- switch(type,
+                  Thies=(20 - dia_m) / 20,
+                  Parsivel=(30 - dia_m) / 30)
+  
+  # apply filter to PSVD matrix
+  if (is.null(filter)) {
+    filter <- matrix(1, ncol=ncol(x), nrow=nrow(x))
+  }
+  x <- x * filter
+  
+  # compute precipitation amount per velocity class (mm)
+  r <- rep(0, ncol(x))
+  for (j in 1:ncol(x)) {
+    if (sum(x[,j])==0) next()
+    r[j] <- 6 * 10e-04 * pi * sum(x[,j] * dia_m^3 / a_eff) / 3600
+  }
+
+  # compute spectral number density (m-3 mm-1)
+  nd <- rep(0, ncol(x))
+  for (j in 1:ncol(x)) {
+    if (sum(x[,j])==0) next()
+    nd[j] <- sum(x[,j] / (vel_m[j]*a_eff*60), na.rm=TRUE)
+  }
+  nd <- nd / r
+  
+  # collapse PSVD matrix
+  xx <- data.frame(veloc=vel_m, limit=vel[-length(vel)],
+                   np=colSums(x*filter)/r, nd=nd)
+  
+  ggplot(xx, aes(x=veloc, y=nd)) +
+#    geom_step(aes(x=limit), col='dark grey') +
+    geom_line(col='dark grey') +
+    geom_point() +
+    xlim(c(0,8)) +
+    scale_y_log10() +
+    xlab('Fall velocity (m s-1)') + ylab('N(D) (m-3 mm-1)') +
+    theme_bw() + 
+    guides(alpha=FALSE)
+}
+
+
 
 
 
