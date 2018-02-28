@@ -148,6 +148,61 @@ if($disdro == 0)
 	$tau = 60.0; # sampling interval in seconds
 	$ta = $tau*$alpha;
 
+	open F, 'filter_thies.csv';
+	@ls = <F>;
+	close F;
+	shift @ls;
+	@mask = ();
+	foreach $l (@ls)
+	{
+		$l =~ s/[\r\n\"]+//g;
+		$l =~ s/^.*?\,//g;
+		$l =~ s/true/1/ig;
+		$l =~ s/false/0/ig;
+		@xs = split(/\s*\,\s*/, $l);
+		foreach $x (@xs)
+		{
+			push(@mask, $x);
+		}
+	}
+	if(int($#mask+1) != 22*20 )
+	{
+		print "Using default mask\n";
+		@mask = ();
+		for($i=0; $i<22*20; $i++)
+		{
+			push(@mask, 1);
+		}
+	}
+	else
+	{
+		print "Mask read from filter_thies.csv\n";
+	}
+
+	open F, 'margin_thies.csv';
+	@ls = <F>;
+	close F;
+	$ls[0] =~ s/[\r\n\"]+//g;
+	@xs = split(/\s*\,\s*/, $ls[0]);
+	@margin = ();
+	foreach $x (@xs)
+	{
+		push(@margin, $x);
+	}
+	if(int($#margin+1) != 22 )
+	{
+		print "Using default margin factors\n";
+		@margin = ();
+		for($i=0; $i<22; $i++)
+		{
+			push(@margin, 1.0);
+		}
+	}
+	else
+	{
+		print "Margin factors read from margin_thies.csv\n";
+	}
+
 	# Procesado de los archivos
 	$chunk = "";
 	foreach $f (@fs){
@@ -229,6 +284,7 @@ if($disdro == 0)
 					# $d[16]  MOR visibility, m
 					# $d[17]  Z (radar reflectivity, dB mm6 m-3)
 					# $d[18]  Measurement quality (%)
+					# $d[49]  M (number of particles detected, -)
 
 					if($d[519] ne '')
 					{
@@ -312,17 +368,10 @@ if($disdro == 0)
 						$k=0;
 						for($i=0;$i<22;$i++){
 							for($j=0;$j<20;$j++){
-								# Consider drops with d > 0.30 mm and velocity < 1.5 * terminal
-								if($dmed[$i] > 0.30 && $vmed[$j] < 1.5 * terminal_velocity($dmed[$i])) 
-								{
-									$dsd[$j][$i] = $d[79+$k];
-									$dsdv[$j] = $dsdv[$j] + $d[79+$k];
-									$dsdd[$i] = $dsdd[$i] + $d[79+$k];
-								}
-								else
-								{
-									$dsd[$j][$i] = 0.0;
-								}
+								$dsd[$j][$i] = $d[79+$k] * $mask[$k] * $margin[$i];
+								$dsdv[$j] = $dsdv[$j] + $d[79+$k] * $mask[$k] * $margin[$i];
+								$dsdd[$i] = $dsdd[$i] + $d[79+$k] * $mask[$k] * $margin[$i];
+		
 								if($dsd[$j][$i] eq '999'){
 									$satura=1;
 								}
@@ -330,23 +379,14 @@ if($disdro == 0)
 							}
 						}
 
-						# Cálculo del número de partículas
+						# Cálculo del número de partículas N (-)
 						$k = 0;
 						for($j=0;$j<20;$j++){
 							for($i=0;$i<22;$i++){
 								$k = $k + $dsd[$j][$i];
 							}
 						}
-						$np_meas = $k;
-
-						# Cálculo vector N (number density, m3)
-						for($j=0;$j<20;$j++){
-							$n[$j]=0.0;
-							for($i=0;$i<22;$i++){
-								$n[$j] += $dsd[$j][$i];
-							}
-							$n[$j] = $n[$j]/$vmed[$j]/$ta;
-						}
+						$np = int($k);
 
 						# Cálculo R (rain intensity, mm h-1)
 						$r=0.0;
@@ -361,6 +401,20 @@ if($disdro == 0)
 
 						# Cálculo P (M precipitation amount, mm)
 						$p = $r/60.0;
+
+						# Cálculo vector ND (number density, m-3 mm-1)
+						@nd = ();
+						@nd2 = ();
+						for($i=0;$i<22;$i++){
+							$nd[$i] = 0.0;
+							for($j=0;$j<20;$j++){
+								$nd[$i] += $dsd[$j][$i]/$vmed[$j]/$ta;
+							}
+							if($p>0.0){
+								$nd[$i] = $nd[$i] / $p;
+							}
+							$nd2[$i] = 'nd'.($i+1);
+						}
 
 						# Cálculo M (water content, g m3)
 						$m=0.0;
@@ -384,7 +438,7 @@ if($disdro == 0)
 						}
 						$z = 10*log10(1/$ta*$z);
 
-						# Cálculo E (kynetic energy, J m-2 mm-1)
+						# Cálculo E (kinetic energy, J m-2 mm-1)
 						$e=0.0;
 						for($i=0;$i<22;$i++){
 							$x=0.0;
@@ -400,7 +454,7 @@ if($disdro == 0)
 							$e = 0.0;
 						}
 
-						# Cálculo ET (kynetic energy ac. to Uplinger, J m-2 mm-1)
+						# Cálculo ET (kinetic energy ac. to Uplinger, J m-2 mm-1)
 						$et1=0.0;
 						for($i=0;$i<22;$i++){
 							$x=0.0;
@@ -411,12 +465,11 @@ if($disdro == 0)
 						}
 						if($p>0.0){
 							$et1 = 1.0/$alpha/$p/12.0*$pi*1.E-6*$et1;
-						}
-						else{
+						}else{
 							$et1 = 0.0;
 						}
 
-						# Cálculo ET (kynetic energy ac. to Van Dijk, J m-2 mm-1)
+						# Cálculo ET (kinetic energy ac. to Van Dijk, J m-2 mm-1)
 						$et2=0.0;
 						for($i=0;$i<22;$i++){
 							$x=0.0;
@@ -432,7 +485,7 @@ if($disdro == 0)
 							$et2 = 0.0;
 						}
 
-						# Cálculo ET (kynetic energy ac. to Atlas, J m-2 mm-1)
+						# Cálculo ET (kinetic energy ac. to Atlas, J m-2 mm-1)
 						$et3=0.0;
 						for($i=0;$i<22;$i++){
 							$x=0.0;
@@ -695,7 +748,7 @@ if($disdro == 0)
 						$v5 = sprintf("%.3f", $v5);
 						$v6 = sprintf("%.3f", $v6);
 
-            $data{$time} = "$synop,$r,$p,$m,$z,$e,$v,$d[12],$d[17],0,$d[16],$d[18],$d[519],$d[520],$d[521],$d[522],$d[49],$np_meas,$d[38],$d[40],$d[41],$d[20],$d[36],$d1,$d2,$d3,$d4,$d5,$d6,$v1,$v2,$v3,$v4,$v5,$v6,$shift,$line,$satura,$#d";
+						$data{$time} = "$synop,$r,$p,$m,$z,$e,$v,$d[12],$d[17],0,$d[16],$d[18],$d[519],$d[520],$d[521],$d[522],$d[49],$np,$d[38],$d[40],$d[41],$d[36],$d1,$d2,$d3,$d4,$d5,$d6,$v1,$v2,$v3,$v4,$v5,$v6,".join(',', @nd).",$shift,$line,$satura,$#d"; 
 
 					}
 					#else{
@@ -712,8 +765,8 @@ if($disdro == 0)
 	open F, '>'.$outfile;
 
 	print F "'type','serial','time','seconds','synop','r','p','m','z','e','mor','r_meas',";
-	print F "'z_meas','e_meas','mor_meas','qual','tmp','rh','w','wd','np','np_meas','lcurrent','ocontrol','power','status',";
-	print F "'tmp_int','d10','d25','d50','d75','d90','dmean','v10','v25','v50','v75','v90','vmean','t_shift','now','err','ncol'\n";
+	print F "'z_meas','e_meas','mor_meas','qual','tmp','rh','w','wd','np_meas','np','lcurrent','ocontrol','power',";
+	print F "'tmp_int','d10','d25','d50','d75','d90','dmean','v10','v25','v50','v75','v90','vmean','".join('\',\'', @nd2)."','t_shift','now','err','ncol'\n";
 
 	# Recorremos fechas
 	for($i=$secs_i;$i<=$secs_f;$i+=60){
@@ -722,15 +775,17 @@ if($disdro == 0)
 			if($data{$x} eq ''){
 				$err = 1;
 				$num = 0;
-				#print F "Thi,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
-				print F "Thi,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,$err,$num\n";
+				#print F "Thi,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
+				print F "Thi,$iserial,$x,$i,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,";
+				print F "NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,$err,$num\n";
 			}
 			elsif($data{$x} =~ /^err(\d+)\,([^\,]+)/)
 			{
 				$err = $1;
 				$num = $2+1;
-				#print F "Thi,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
-				print F "Thi,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,$err,$num\n";
+				#print F "Thi,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
+				print F "Thi,$iserial,$x,$i,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,";
+				print F "NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,$err,$num\n";
 			}
 			else{
 				# Si todo ha ido bien ponemos un valor de 0 en el error status
@@ -811,6 +866,61 @@ if($disdro == 1)
 	$pi = 3.141592653589793;
 	$tau = 60.0; # sampling time interval, seconds
 	$ta = $tau*$alpha;
+
+	open F, 'filter_parsivel.csv';
+	@ls = <F>;
+	close F;
+	shift @ls;
+	@mask = ();
+	foreach $l (@ls)
+	{
+		$l =~ s/[\r\n\"]+//g;
+		$l =~ s/^.*?\,//g;
+		$l =~ s/true/1/ig;
+		$l =~ s/false/0/ig;
+		@xs = split(/\s*\,\s*/, $l);
+		foreach $x (@xs)
+		{
+			push(@mask, $x);
+		}
+	}
+	if(int($#mask+1) != 32*32 )
+	{
+		print "Using default mask\n";
+		@mask = ();
+		for($i=0; $i<32*32; $i++)
+		{
+			push(@mask, 1);
+		}
+	}
+	else
+	{
+		print "Mask read from filter_parsivel.csv\n";
+	}
+
+	open F, 'margin_parsivel.csv';
+	@ls = <F>;
+	close F;
+	$ls[0] =~ s/[\r\n\"]+//g;
+	@xs = split(/\s*\,\s*/, $ls[0]);
+	@margin = ();
+	foreach $x (@xs)
+	{
+		push(@margin, $x);
+	}
+	if(int($#margin+1) != 32 )
+	{
+		print "Using default margin factors\n";
+		@margin = ();
+		for($i=0; $i<32; $i++)
+		{
+			push(@margin, 1.0);
+		}
+	}
+	else
+	{
+		print "Margin factors read from margin_parsivel.csv\n";
+	}
 
 	# Procesado de los archivos
 	$last = '';
@@ -972,17 +1082,9 @@ if($disdro == 1)
 		                $k=0;
 		                for($j=0;$j<32;$j++){
 		                    for($i=0;$i<32;$i++){
-								# Consider drops with d > 0.30 mm and velocity < 1.5 * terminal
-								if($dmed[$i] > 0.30 && $vmed[$j] < 1.5 * terminal_velocity($dmed[$i])) 
-								{
-									$dsd[$j][$i] = $d[94+$k];
-									$dsdv[$j] = $dsdv[$j] + $d[94+$k];
-									$dsdd[$i] = $dsdd[$i] + $d[94+$k];
-								}
-								else
-								{
-									$dsd[$j][$i] = 0.0;
-								}
+								$dsd[$j][$i] = $d[94+$k] * $mask[$j+$i*32] * $margin[$i];
+								$dsdv[$j] = $dsdv[$j] + $d[94+$k] * $mask[$j+$i*32] * $margin[$i];
+								$dsdd[$i] = $dsdd[$i] + $d[94+$k] * $mask[$j+$i*32] * $margin[$i];
 
 		                        $k++;
 		                    }
@@ -995,7 +1097,7 @@ if($disdro == 1)
 								$k = $k + $dsd[$j][$i];
 							}
 						}
-						$np_meas = $k;
+						$np = int($k);
 
 		                # Cálculo R (rain intensity, mm h-1)
 		                $cr=0.0;
@@ -1009,6 +1111,20 @@ if($disdro == 1)
 		                $cr = 6E-4*$pi/$ta*$cr;
 
 						$cp = $cr/60; # P (precipitation amount, mm)
+
+						# Cálculo vector ND (number density, m-3 mm-1)
+						@nd = ();
+						@nd2 = ();
+						for($i=0;$i<32;$i++){
+							$nd[$i] = 0.0;
+							for($j=0;$j<32;$j++){
+								$nd[$i] += $dsd[$j][$i]/$vmed[$j]/$ta;
+							}
+							if($cp>0.0){
+								$nd[$i] = $nd[$i] / $cp;
+							}
+							$nd2[$i] = 'nd'.($i+1);
+						}
 
 		         		# Cálculo M (water content, g m3)
 		                $cm=0.0;
@@ -1032,7 +1148,7 @@ if($disdro == 1)
 		                }
 		                $cz = 10*log10(1/$ta*$cz);
 
-						# Cálculo E (kynetic energy, J m-2 mm-1)
+						# Cálculo E (kinetic energy, J m-2 mm-1)
 						$ce=0.0;
 						for($i=0;$i<32;$i++){
 							$x=0.0;
@@ -1292,7 +1408,7 @@ if($disdro == 1)
 						$v5 = sprintf("%.3f", $v5);
 						$v6 = sprintf("%.3f", $v6);
 
-						$data{$time} = "$synop,$cr,$cp,$cm,$cz,$ce,$cv,$r,$z,$e,$m,$na,$na,$na,$na,$na,$d[10],$np_meas,$na,$d[9],$d[16],$d[17],$d[11],$d1,$d2,$d3,$d4,$d5,$d6,$v1,$v2,$v3,$v4,$v5,$v6,$shift,$line,0,".int($#d+1);
+						$data{$time} = "$synop,$cr,$cp,$cm,$cz,$ce,$cv,$r,$z,$e,$m,$na,$na,$na,$na,$na,$d[10],$np,$na,$d[9],$d[16],$d[11],$d1,$d2,$d3,$d4,$d5,$d6,$v1,$v2,$v3,$v4,$v5,$v6,".join(',', @nd).",$shift,$line,0,".int($#d+1);
 					}
 
 				}else{
@@ -1307,23 +1423,25 @@ if($disdro == 1)
 	open F, '>'.$outfile;
 
 	print F "'type','serial','time','seconds','synop','r','p','m','z','e','mor','r_meas',";
-	print F "'z_meas','e_meas','mor_meas','qual','tmp','rh','w','wd','np','np_meas','lcurrent','ocontrol','power','status',";
-	print F "'tmp_int','d10','d25','d50','d75','d90','dmean','v10','v25','v50','v75','v90','vmean','t_shift','now','err','ncol'\n";
+	print F "'z_meas','e_meas','mor_meas','qual','tmp','rh','w','wd','np_meas','np','lcurrent','ocontrol','power',";
+	print F "'tmp_int','d10','d25','d50','d75','d90','dmean','v10','v25','v50','v75','v90','vmean','".join('\',\'', @nd2)."','t_shift','now','err','ncol'\n";
 
 	# Recorremos fechas
 	for($i=$secs_i;$i<=$secs_f;$i+=60){
 			$x = get_date($i);
 			# Comprobamos si hay dato para esta fecha
 			if($data{$x} eq ''){
-				#print F "Par,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0\n";
-				print F "Par,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,1,0\n";
+				#print F "Par,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0\n";
+				print F "Par,$iserial,$x,$i,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,";
+				print F "NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,1,0\n";
 			}
 			elsif($data{$x} =~ /^err(\d+)\,([^\,]+)/)
 			{
 				$err = $1;
 				$num = $2+1;
-				#print F "Par,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
-				print F "Par,$iserial,$x,$i,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,na,$err,$num\n";
+				#print F "Par,$iserial,$x,$i,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$err,$num\n";
+				print F "Par,$iserial,$x,$i,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,";
+				print F "NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,$err,$num\n";
 			}
 			else{
 				# Si todo ha ido bien ponemos un valor de 0 en el error status
