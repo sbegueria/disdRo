@@ -105,7 +105,7 @@ psvd_read <- function (files, type='Thies') {
 #'                      One 'Beard', 'Atlas', 'Uplinger' or 'VanDijk'. Defaults
 #'                      to 'Beard'.
 #' @param eta           Numeric. A vector of air dynamic viscosity values.
-#'                      Deafults to 1.818e-04 kg m-1 s-1. Optional, used only
+#'                      Deafults to 1.818e-05 kg m-1 s-1. Optional, used only
 #'                      in the Beard model.
 #' @param P             Numeric. A vector of air pressure values. Defaults to
 #'                      101.325 kPa. Optional, used  only in the Beard model.
@@ -556,7 +556,12 @@ pvd_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
 #' @param alpha        Numeric. Transparency of the filtered (removed) bins.
 #'                     Defaults to 0.25 (a value of 0 will remove them
 #'                     completely).
-#' @return A PSVD plot.
+#' @param eta          Numeric. Air dynamic viscosity, optional.
+#'                     See `psvd_model()`.
+#' @param P            Numeric. Air pressure, optional. See `psvd_model()`.
+#' @param T            Numeric. Air temperature, optional. See `psvd_model()`.
+#' @param rho          Numeric. Air density, optional. See `psvd_model()`.
+#' @param alt          Numeric. Elevation, optional. See `psvd_model()`.#' @return A PSVD plot.
 #'
 #' @section References
 #'
@@ -567,10 +572,16 @@ pvd_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
 #' dsd <- psvd_read(files, type='Thies')
 #' day <- apply(dsd, c(2,3), sum)
 #' head(day)
+#' 
 #' # full plot
 #' psvd_plot(day)
-#' # choose one model
+#' 
+#' # plot a theoretical fall velocity model
 #' psvd_plot(day, model='Beard')
+#' 
+#' # same, specifying the elevation
+#' psvd_plot(day, model='Beard', alt=2000)
+#' 
 #' # no model, add contour lines
 #' psvd_plot(day, model=NA, contour=TRUE)
 #'
@@ -582,7 +593,8 @@ pvd_plot <- function(x, type='Thies', filter=NULL, a=NULL) {
 psvd_plot <- function(x, type='Thies',
                      model=NULL,
                      contour=FALSE, theme='color',
-                     filter=NULL, alpha=0.25) {
+                     filter=NULL, alpha=0.25,
+                     eta= 1.818e-05, P=101.325, T=288.15, rho=1.225, alt=0) {
 
   if (type!='Thies' & type!='Parsivel')
     stop('type must be one of c(Thies, Parsivel)')
@@ -591,10 +603,6 @@ psvd_plot <- function(x, type='Thies',
   dia <- switch(type, Thies=disdRo:::dia_t, Parsivel=disdRo:::dia_p)
   vel <- switch(type, Thies=disdRo:::vel_t, Parsivel=disdRo:::vel_p)
   
-  # particle size and velocity bin means
-  #dia_m <- switch(type, Thies=disdRo:::dia_m_t, Parsivel=disdRo:::dia_m_p)
-  #vel_m <- switch(type, Thies=disdRo:::vel_m_t, Parsivel=disdRo:::vel_m_p)
-
   # particle size and velocity bin widths
   dia_w <- switch(type, Thies=disdRo:::dia_w_t, Parsivel=disdRo:::dia_w_p)
   vel_w <- switch(type, Thies=disdRo:::vel_w_t, Parsivel=disdRo:::vel_w_p)
@@ -639,11 +647,12 @@ psvd_plot <- function(x, type='Thies',
     if (!is.null(model)) {
       if ('Beard' %in% model) {
         g <- g + stat_function(aes(col='Beard'), fun=psvd_model,
-                               args=list(model='Beard'))
+                               args=list(model='Beard', eta=eta, P=P, T=T,
+                                         rho=rho, alt=alt))
       }
       if ('Atlas' %in% model) {
         g <- g + stat_function(aes(col='Atlas'), fun=psvd_model,
-                               args=list(model='Atlas'))
+                               args=list(model='Atlas', rho=rho, alt=alt))
       }
       if ('Uplinger' %in% model) {
         g <- g + stat_function(aes(col='Uplinger'), fun=psvd_model,
@@ -688,35 +697,6 @@ psvd_plot <- function(x, type='Thies',
       }
     }
   }
-  # 
-  # if (int) {
-  #   # kernel density estimation (interpolated values)?
-  #   x_int <- akima::interp(y=x_m$dia, x=x_m$vel, z=x_m$n,
-  #                   xo=seq(min(vel),max(vel),length=100),
-  #                   yo=seq(min(dia),max(dia),length=100))
-  #   x_int <- matrix(x_int$z, 100, 100, dimnames=list(x_int$x, x_int$y))
-  #   x_int <- reshape2::melt(x_int, na.rm=TRUE)
-  #   x_int <- x_int[!is.na(x_int[,3]),]
-  #   x_int <- as.data.frame(x_int)
-  #   colnames(x_int) <- colnames(x_m[c(1,2,5)])
-  #   #summary(x_int)
-  #   
-  #   # plot it
-  #   # original version, casts a warning in R CMD CHECK:     g <- ggplot(x_int, aes(x=dia,y=vel,z=n)) + geom_tile(aes(fill=n), alpha=1) +
-  #   g <- ggplot(x_int, aes_(x=~dia, y=~vel, z=~n)) +
-  #     geom_tile(aes_(fill=~n), alpha=1) +
-  #     stat_contour(col='black', alpha=0.2) +
-  #     scale_fill_gradient2(name='NS', low='darkgreen',mid='yellow',high='darkred',
-  #                          limits=c(0,5), midpoint=2,
-  #                          na.value='darkgreen',labels=c(0,10,100,1000,10000,100000)) +
-  #     stat_function(fun=function(x) 17.67*(x/10)^0.67, col='blue') + # Atlas
-  #     stat_function(fun=function(x) 4.874*x*exp(-0.195*x), col='red') + # Uplinger
-  #     stat_function(fun=function(x) 0.0561*x^3-0.912*x^2+5.03*x-0.254) + # Van Dijk
-  #     xlim(c(0,8)) + ylim(c(0,15)) +
-  #     xlab('Diameter (mm)') + ylab('Velocity (m/s)') +
-  #     theme_bw() +
-  #     theme(panel.grid=element_blank())
-  # }
   
   return(g)
 }
@@ -824,7 +804,7 @@ psvd_plot <- function(x, type='Thies',
 #' @examples
 #'
 #' f <- system.file('extdata/rawDataParsivel', package='disdRo')
-#' x <- dsd_integrate(f)
+#' x <- psvd_integrate(f)
 #' head(x)
 #' summary(x)
 #'
@@ -835,12 +815,10 @@ psvd_integrate <- function(indir, script=NULL, outfile=NULL, interp='linear') {
                      replicate(15, sample(LETTERS, 1, TRUE), FALSE)), sep='/')
   }
   if (is.null(script)) {
-    #script <- './perl/process.pl'
-    #script <- paste(find.package('disdRo'),'perl/process.pl',sep='/')
     script <- system.file('perl/process.pl', package='disdRo')
   }
   system(paste('perl', script, indir, outfile, interp))
-  int <- read.table(outfile, sep=',', header=TRUE, na.strings='na')
+  int <- read.table(outfile, sep=',', header=TRUE, na.strings='NA')
   int$time <- as.POSIXct(int$time)
   return(int)
 }
