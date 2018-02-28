@@ -16,7 +16,7 @@ knitr::opts_chunk$set(comment=NA, fig.height=6, fig.width=7, fig.align='center')
 
 # Remember that RStudio’s "Build & reload" does not build vignettes to
 # save time. Use `devtools::build(vignettes=TRUE)` instead, or
-# altrnatively: `tools::buildVignettes(dir = '.', tangle = TRUE)`.
+# altrnatively: `tools::buildVignettes(dir='.', tangle=TRUE)`.
 # Similarly, `devtools::install_github()` will also not build vignettes by
 # default, so it need to be forced with
 # `devtools::install_github(build_vignettes = TRUE)`.
