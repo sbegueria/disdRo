@@ -4,8 +4,8 @@
 \alias{psvd_plot}
 \title{Plot disdrometer data}
 \usage{
-psvd_plot(x, type = "Thies", model = "Beard", contour = FALSE,
-  theme = "color", filter = NULL)
+psvd_plot(x, type = "Thies", model = NULL, contour = FALSE,
+  theme = "color", filter = NULL, alpha = 0.25)
 }
 \arguments{
 \item{x}{A particle size velocity distribution (PSVD) matrix.}
@@ -25,13 +25,17 @@ added to the plot? Defaults to FALSE.}
 Current options are 'color' (default) or 'bw' (black and
 white).}
 
-\item{outlier}{A value between 0 and 1. Removes outlier bins, i.e.
+\item{filter}{A value between 0 and 1. Removes outlier bins, i.e.
 those that are between (1-value) and (1+value) far from
 the Bear theoretical fall velocity model. Defaults to
 Inf (no outliers are removed).}
+
+\item{alpha}{Numeric. Transparency of the filtered (removed) bins.
+Defaults to 0.25 (a value of 0 will remove them
+completely).}
 }
 \value{
-A DSD plot.
+A PSVD plot.
 }
 \description{
 Produce a PSVD plot: particle count velocity vs. size.
@@ -51,12 +55,11 @@ head(day)
 psvd_plot(day)
 # choose one model
 psvd_plot(day, model='Beard')
-# no model
-psvd_plot(day, model=NA)
 # no model, add contour lines
 psvd_plot(day, model=NA, contour=TRUE)
 
 # Use a filter to remove outlier bins
-psvd_plot(dat, filter=psvd_filter(type='Thies', d=c(0.3,7), tau=0.5))
+psvd_plot(day, filter=psvd_filter(type='Thies', d=c(0.3,7), tau=0.5))
+psvd_plot(day, filter=psvd_filter(type='Thies', d=c(0.3,7), tau=0.5), alpha=0)
 
 }
