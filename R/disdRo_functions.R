@@ -6,13 +6,12 @@
 # the RStudio button Build & Reload. You have to run:
 # devtools::install(build_vignettes = TRUE)
 
-#require(akima)
 
 #' Read raw disdrometer data
-#'
+#' 
 #' Retrieves (usually minutal) particle size and velocity distribution (PSVD)
 #' data, that is the matrix of particle counts arranged by size and velocity
-#' binds, from a list of raw disdrometer data files.
+#' bins, from a list of raw disdrometer data files.
 #'
 #' @param files        A list of files to be processed.
 #' @param type         Character vector designing the type of disdrometer,
@@ -24,6 +23,7 @@
 #' velocity (columns) particle counts.
 #'
 #' @section Note
+#' 
 #' So far, it is assumed that the data consists on the complete telegram is
 #' recorded. The raw PSVD matrix is assumed to start on position 23 (Thies)
 #' and 33 (Parsivel) of the telegram. This may not correspond to the factory
@@ -36,12 +36,12 @@
 #'
 #' f <- system.file('extdata', 'rawDataThies', package='disdRo')
 #' files <- list.files(f, '.txt', full.names=TRUE, recursive=TRUE)
-#' dsd <- dsd_read(files, type='Thies')
+#' dsd <- psvd_read(files, type='Thies')
 #' dim(dsd)
 #' dimnames(dsd)
 #'
 #' @export
-dsd_read <- function (files, type='Thies') {
+psvd_read <- function (files, type='Thies') {
 
   if (type!='Thies' & type!='Parsivel')
     stop('type must be one of c(Thies, Parsivel)')
@@ -350,6 +350,102 @@ psvd_filter <- function(type='Thies', d=c(-Inf,Inf), v=c(-Inf,Inf),
   
   
 
+#'Particle size distribution plot
+#'
+#' Produce a PSD plot: particle count (number of drops per m^3 of air and
+#' mm of rain) vs drop size.
+#'
+#' @param x            A particle size velocity distribution (PSVD) matrix.
+#' @param type         Character vector designing the type of disdrometer,
+#'                     currently one of 'Thies' or 'Parsivel'. Defaults to
+#'                     'Thies'.
+#' @param filter       A value between 0 and 1. Removes outlier bins, i.e.
+#'                     those that are between (1-value) and (1+value) far from
+#'                     the Bear theoretical fall velocity model. Defaults to
+#'                     Inf (no outliers are removed).
+#' @return A PSD plot.
+#'
+#' @section References
+#'
+#' @examples
+#'
+#' f <- system.file('extdata', 'rawDataThies', package='disdRo')
+#' files <- list.files(f, '.txt', full.names=TRUE, recursive=TRUE)
+#' dsd <- psvd_read(files, type='Thies')
+#' day <- apply(dsd, c(2,3), sum)
+#' psd_plot(day)
+#' psd_plot(day, filter=psvd_filter(type='Thies', d=c(0.3,7), tau=0.5))
+#'
+#' @export
+psd_plot <- function(x, type='Thies', filter=NULL) {
+  
+  # particle size bin means
+  dia_m <- switch(type, Thies=disdRo:::dia_m_t, Parsivel=disdRo:::dia_m_p)
+  vel_m <- switch(type, Thies=disdRo:::vel_m_t, Parsivel=disdRo:::vel_m_p)
+  # particle size bin limits
+  dia <- switch(type, Thies=disdRo:::dia_t, Parsivel=disdRo:::dia_p)
+  
+  # sensor area (m^2)
+  a <- switch(type, Thies=0.00456, Parsivel=0.0054)
+  
+  # correction for effective area
+  # we need before to store the width (W) and length (L) of the laser sheet of
+  # both devices. 30 x 180 mm for Parsivel. although Battaglia refers W=27 mm.
+  #  a <- 10e-06 * L * (W-dia_m). Thies is 20 x 228 mm
+  a_eff <- switch(type,
+                  Thies=(20 - dia_m) / 20,
+                  Parsivel=(30 - dia_m) / 30)
+
+  # apply filter to PSVD matrix
+  if (is.null(filter)) {
+    filter <- matrix(1, ncol=ncol(x), nrow=nrow(x))
+  }
+  x <- x * filter
+  
+  # compute precipitation amount per diameter class (mm)
+  r <- rep(0, nrow(x))
+  for (i in 1:nrow(x)) {
+    if (sum(x[i,])==0) next()
+#    r[i] <- 6 * 10e-04 * pi * sum(x[i,]) * dia_m[i]^3 / a / 3600
+    r[i] <- 6 * 10e-04 * pi * sum(x[i,]) * dia_m[i]^3 / a_eff[i] / 3600
+  }
+
+  # compute spectral number density (m-3 mm-1)
+  nd <- rep(0, nrow(x))
+  for (i in 1:nrow(x)) {
+    if (sum(x[i,])==0) next()
+#    nd[i] <- sum(x[i,] / (vel_m[i]*a*60), na.rm=TRUE)
+    nd[i] <- sum(x[i,] / (vel_m[i]*a_eff[i]*60), na.rm=TRUE)
+  }
+  nd <- nd / r
+
+  # collapse PSVD matrix
+  xx <- data.frame(size=dia_m, limit=dia[-length(dia)],
+                   np=rowSums(x*filter)/r, nd=nd)
+  
+  # ggplot(xx, aes(x=size, y=np)) +
+  #   geom_step(aes(x=limit), col='dark grey') +
+  #   geom_point() +
+  #   xlim(c(0,8)) +
+  #   scale_y_log10() +
+  #   xlab('Diameter (mm)') + ylab('NP (mm-1)') +
+  #   theme_bw() + 
+  #   guides(alpha=FALSE)
+
+  ggplot(xx, aes(x=size, y=nd)) +
+    geom_step(aes(x=limit), col='dark grey') +
+    geom_point() +
+    xlim(c(0,8)) +
+    scale_y_log10() +
+    xlab('Diameter (mm)') + ylab('N(D) (m-3 mm-1)') +
+    theme_bw() + 
+    guides(alpha=FALSE)
+}
+
+
+
+
+
 #' Plot disdrometer data
 #'
 #' Produce a PSVD plot: particle count velocity vs. size.
@@ -366,12 +462,14 @@ psvd_filter <- function(type='Thies', d=c(-Inf,Inf), v=c(-Inf,Inf),
 #' @param theme        Character vector indicating a plotting theme to use.
 #'                     Current options are 'color' (default) or 'bw' (black and
 #'                     white).
-#' @param outlier      A value between 0 and 1. Removes outlier bins, i.e.
+#' @param filter       A value between 0 and 1. Removes outlier bins, i.e.
 #'                     those that are between (1-value) and (1+value) far from
 #'                     the Bear theoretical fall velocity model. Defaults to
 #'                     Inf (no outliers are removed).
-#'
-#' @return A DSD plot.
+#' @param alpha        Numeric. Transparency of the filtered (removed) bins.
+#'                     Defaults to 0.25 (a value of 0 will remove them
+#'                     completely).
+#' @return A PSVD plot.
 #'
 #' @section References
 #'
@@ -379,24 +477,25 @@ psvd_filter <- function(type='Thies', d=c(-Inf,Inf), v=c(-Inf,Inf),
 #'
 #' f <- system.file('extdata', 'rawDataThies', package='disdRo')
 #' files <- list.files(f, '.txt', full.names=TRUE, recursive=TRUE)
-#' dsd <- dsd_read(files, type='Thies')
+#' dsd <- psvd_read(files, type='Thies')
 #' day <- apply(dsd, c(2,3), sum)
 #' head(day)
 #' # full plot
-#' dsd_plot(day)
+#' psvd_plot(day)
 #' # choose one model
-#' dsd_plot(day, model='Beard')
-#' # no model
-#' dsd_plot(day, model=NA)
+#' psvd_plot(day, model='Beard')
 #' # no model, add contour lines
-#' dsd_plot(day, model=NA, contour=TRUE)
+#' psvd_plot(day, model=NA, contour=TRUE)
 #'
-#' filter <- psvd_filter(type='Thies', d=c(0.3,7), tau=0.5)
+#' # Use a filter to remove outlier bins
+#' psvd_plot(day, filter=psvd_filter(type='Thies', d=c(0.3,7), tau=0.5))
+#' psvd_plot(day, filter=psvd_filter(type='Thies', d=c(0.3,7), tau=0.5), alpha=0)
 #' 
 #' @export
-dsd_plot <- function(x, type='Thies',
-                     #model='Beard',
-                     contour=FALSE, theme='color', filter=NULL) {
+psvd_plot <- function(x, type='Thies',
+                     model=NULL,
+                     contour=FALSE, theme='color',
+                     filter=NULL, alpha=0.25) {
 
   if (type!='Thies' & type!='Parsivel')
     stop('type must be one of c(Thies, Parsivel)')
@@ -424,22 +523,25 @@ dsd_plot <- function(x, type='Thies',
   
   # change opacity of outliers according to filter
   if (!is.null(filter)) {
-    x_m$filter <- reshape2::melt(filter)[,3]
+    x_m$filter <- as.factor(as.numeric(reshape2::melt(filter)[,3]))
   } else {
-    x_m$filter <- TRUE
+    x_m$filter <- as.factor(1)
   }
-  x_m$alp <- x_m$filter
-  x_m$alp <- pmin(1, (x_m$alp+0.75))
+  #x_m$alp <- x_m$filter
+  #x_m$alp <- pmin(1, (x_m$alp+0.75))
   
   x_m <- x_m[x_m$n>1,]
   #summary(x_m)
     
   # heatmap - rectangular binding
   # original version, casts a warning in R CMD CHECK: g <- ggplot(x_m, aes(x=dia, y=vel, width=dia_w, height=vel_w, fill=n)) +
-  g <- ggplot(x_m, aes_(x=~dia, y=~vel, width=~dia_w, height=~vel_w, fill=~n, alpha=~alp)) +
+  g <- ggplot(x_m, aes_(x=~dia, y=~vel, width=~dia_w, height=~vel_w, fill=~n, alpha=~filter)) +
     geom_tile() +
-    xlim(c(0,8)) + ylim(c(0,15)) +
-    xlab('Diameter (mm)') + ylab('Velocity (m/s)') +
+    scale_alpha_discrete(limits=c(0, 1), range=c(alpha, 1)) +
+    xlim(c(0,8)) +
+    ylim(c(0,15)) +
+    xlab('Diameter (mm)') +
+    ylab('Velocity (m/s)') +
     theme_bw() + 
     guides(alpha=FALSE) +
     theme(panel.grid=element_blank())
@@ -447,7 +549,7 @@ dsd_plot <- function(x, type='Thies',
     g <- g + scale_fill_gradient2(name='NS', low='darkgreen', mid='yellow', high='darkred',
                          limits=c(0,5), midpoint=2,
                          na.value='darkgreen',labels=c(0,10,100,1000,10000,100000))
-    if (length(model)>0) {
+    if (!is.null(model)) {
       if ('Beard' %in% model) {
         g <- g + stat_function(aes(col='Beard'), fun=psvd_model,
                                args=list(model='Beard'))
@@ -640,7 +742,7 @@ dsd_plot <- function(x, type='Thies',
 #' summary(x)
 #'
 #' @export
-dsd_integrate <- function(indir, script=NULL, outfile=NULL, interp='linear') {
+psvd_integrate <- function(indir, script=NULL, outfile=NULL, interp='linear') {
   if (is.null(outfile)) {
     outfile <- paste(tempdir(), do.call(paste0,
                      replicate(15, sample(LETTERS, 1, TRUE), FALSE)), sep='/')
