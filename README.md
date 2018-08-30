@@ -74,7 +74,9 @@ Marta Angulo-Martínez (contributor).
 
 ## References
 
-There are currently no academic papers using this software, but there eventually will.
+This software has been used in the following research articles:
+
+**Angulo-Martínez M., Beguería S., Latorre B., and Fernández-Raga M., Comparison of precipitation measurements by OTT Parsivel2 and Thies LPM optical disdrometers**, *Hydrol. Earth Syst. Sc* **22**:2811-2837, 2018.
 
 
 ## Version history
